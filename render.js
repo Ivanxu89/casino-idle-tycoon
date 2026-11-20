@@ -17,7 +17,7 @@ async function loadAssets() {
   const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
   for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
-  for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); }
+  for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); }
   for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
   for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t <= 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${spriteTier(T, t)}`];
@@ -46,6 +46,18 @@ function drawPerson(ctx, x, y, h, pid, t = 0, cheer = 0, walk = null, flip = fal
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, h * 0.22 * (f === 7 ? 0.75 : 1), h * 0.05, 0, 0, 7); ctx.fill();
   ctx.translate(x, y + bob);
   if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
+  ctx.restore();
+}
+// Jugador de espaldas (hoja de Magnific de 4 fotogramas: quieto, pulsar, celebrar, saltar). Mismas medidas que ANIM.
+function drawPlayerBack(ctx, x, y, h, pid, t, cheer, pressing) {
+  const sheet = IMG['back_' + pid];
+  if (!sheet) return drawPerson(ctx, x, y, h, pid, t, cheer);
+  const k = h / ANIM.idleH, f = cheer > 0 ? (cheer > 0.55 ? 3 : 2) : pressing ? 1 : 0;
+  const bob = cheer <= 0 ? Math.sin(t * 2.2) * h * 0.005 : 0;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, h * 0.22, h * 0.05, 0, 0, 7); ctx.fill();
+  ctx.translate(x, y + bob);
   ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
   ctx.restore();
 }
@@ -267,8 +279,12 @@ function drawMachine(r, i, m) {
     ctx.restore();
 
     // cliente
-    const px = T.cat === 'slot' ? sx - g.w * 0.5 : sx - g.w * 0.1, py = T.cat === 'slot' ? sy + g.w * 0.16 : sy + g.h * 0.32;
-    drawPerson(ctx, px, py, T.cat === 'slot' ? 165 : 155, m.player, time + i, A.cheer);
+    if (T.cat === 'slot') {
+      // de espaldas, delante de la ventana de rodillos, mirando a la máquina
+      drawPlayerBack(ctx, sx - g.w * 0.36, sy + g.w * 0.30, 150, m.player, time + i, A.cheer, A.spin > 0.75);
+    } else {
+      drawPerson(ctx, sx - g.w * 0.1, sy + g.h * 0.32, 150, m.player, time + i, A.cheer);
+    }
 }
 function drawLabels(r, i, m, now) {
     const T = TYPES[m.type], g = mGeom(i, m), sx = SPOTS[i][0];
@@ -365,13 +381,13 @@ function drawTableAnim(type, g, A) {
 /* ----------------------------- PASEANTES ------------------------------ */
 // Los clientes caminan por pasillos (rejilla isométrica entre máquinas), entran y salen por la puerta.
 // Algunos llevan propina ($ dorado sobre la cabeza): tócalos para cobrarla.
-const AISLE_U = [0.15, 0.49, 0.75, 0.99];
-const AISLE_V = [0.13, 0.42, 0.70, 0.98];
-const DOOR_IN = [0.15, 0.70], DOOR = [-0.04, 0.70];
+const AISLE_U = [0.10, 0.42, 0.73, 1.0];
+const AISLE_V = [0.38, 0.70, 1.0];
+const DOOR_IN = [0.10, 0.70], DOOR = [-0.04, 0.70];
 const EMO = ['😍', '🤑', '🎰', '✨', '🍀', '😎', '🥳'];
 const PID_LIST = Object.keys(PLAYERS);
 let WALK = [];
-const walkerCap = () => Math.min(8, 2 + countRoom(S.room));
+const walkerCap = () => Math.min(4, 1 + Math.floor(countRoom(S.room) / 2)); // la mitad que antes
 function spawnWalker() {
   const lo = Math.min(S.room * 2, PID_LIST.length - 4); // salas mejores atraen clientes más ricos
   const [x, y] = floorPt(DOOR[0], DOOR[1]);

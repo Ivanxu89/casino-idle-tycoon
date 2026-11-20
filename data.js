@@ -16,13 +16,13 @@ const ROOMS = [
 
 // cat: slot = "Máquinas", table = "Juegos"
 const TYPES = {
-  lucky:    { cat: 'slot',  name: 'Lucky 7',        sprite: 'slot_lucky', hue: 0,   base: 1,    cycle: 2.5, place: 10,    license: 0,     w: 225, ay: .80, desc: 'La clásica tragaperras de toda la vida.' },
-  emerald:  { cat: 'slot',  name: 'Esmeralda 7',    sprite: 'slot_emerald', hue: 0, base: 5,    cycle: 3,   place: 150,   license: 400,   w: 225, ay: .80, desc: 'Brilla en verde. Paga 5 veces más.' },
-  sapphire: { cat: 'slot',  name: 'Zafiro Deluxe',  sprite: 'slot_sapphire', hue: 0, base: 22,   cycle: 3.5, place: 1800,  license: 5000,  w: 225, ay: .80, desc: 'Tragaperras premium de luces azules.' },
-  amethyst: { cat: 'slot',  name: 'Amatista Royal', sprite: 'slot_amethyst', hue: 0, base: 90,   cycle: 4,   place: 1.5e4, license: 4e4,   w: 225, ay: .80, desc: 'La joya de las tragaperras.' },
-  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 1.2e5, license: 4e5,   w: 300, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
-  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1.5e6, license: 5e6,   w: 300, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
-  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 2e7,   license: 7e7,   w: 310, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
+  lucky:    { cat: 'slot',  name: 'Lucky 7',        sprite: 'slot_lucky', hue: 0,   base: 1,    cycle: 2.5, place: 10,    license: 0,     w: 210, ay: .80, desc: 'La clásica tragaperras de toda la vida.' },
+  emerald:  { cat: 'slot',  name: 'Esmeralda 7',    sprite: 'slot_emerald', hue: 0, base: 5,    cycle: 3,   place: 150,   license: 400,   w: 210, ay: .80, desc: 'Brilla en verde. Paga 5 veces más.' },
+  sapphire: { cat: 'slot',  name: 'Zafiro Deluxe',  sprite: 'slot_sapphire', hue: 0, base: 22,   cycle: 3.5, place: 1800,  license: 5000,  w: 210, ay: .80, desc: 'Tragaperras premium de luces azules.' },
+  amethyst: { cat: 'slot',  name: 'Amatista Royal', sprite: 'slot_amethyst', hue: 0, base: 90,   cycle: 4,   place: 1.5e4, license: 4e4,   w: 210, ay: .80, desc: 'La joya de las tragaperras.' },
+  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 1.2e5, license: 4e5,   w: 280, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
+  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1.5e6, license: 5e6,   w: 280, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
+  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 2e7,   license: 7e7,   w: 290, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
 };
 
 const PLAYERS = {
@@ -102,7 +102,7 @@ function floorPt(u, v) {
   return [B[0] + u * (R[0] - B[0]) + v * (L[0] - B[0]), B[1] + u * (R[1] - B[1]) + v * (L[1] - B[1])];
 }
 // 3×3 huecos; los pasillos de los paseantes (render.js) pasan entre ellos
-const SPOT_UV = [[0.36, 0.28], [0.62, 0.28], [0.88, 0.28], [0.36, 0.56], [0.62, 0.56], [0.88, 0.56], [0.36, 0.84], [0.62, 0.84], [0.88, 0.84]];
+const SPOT_UV = [[0.27, 0.22], [0.58, 0.22], [0.89, 0.22], [0.27, 0.54], [0.58, 0.54], [0.89, 0.54], [0.27, 0.86], [0.58, 0.86], [0.89, 0.86]];
 let SPOTS = SPOT_UV.map(([u, v]) => floorPt(u, v));
 
 /* ----------------------------- OBJETIVOS (FTUE) ------------------------------ */
