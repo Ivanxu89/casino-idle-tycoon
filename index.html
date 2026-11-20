@@ -1,0 +1,77 @@
+<meta charset="utf-8">
+<title>Casino Idle Tycoon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+<!-- ============ JUEGO ============ -->
+<div id="game">
+  <canvas id="cv"></canvas>
+
+  <div id="hud">
+    <div class="hud-money">
+      <div class="coin-ico">$</div>
+      <div>
+        <div id="hMoney" class="big">0</div>
+        <div id="hIncome" class="small">+0 /s</div>
+      </div>
+    </div>
+    <div class="hud-gems"><div class="gem-ico">◆</div><span id="hGems">0</span></div>
+    <div class="hud-gems hud-chips" title="Fichas de prestigio · multiplicador de ingresos">👑 <span id="hChips">0</span></div>
+    <div id="hRoom" class="hud-room">Salón Rubí</div>
+    <div class="hud-btns">
+      <button class="hbtn" data-open="shop" title="Tienda">🛒<span>Tienda</span></button>
+      <button class="hbtn" data-open="rooms" title="Salas">🏛️<span>Salas</span></button>
+      <button class="hbtn" data-open="prestige" id="btnPrestige" title="Vender el casino (prestigio)">👑<span>Vender</span><i id="prestigeBadge" class="badge"></i></button>
+      <button class="hbtn" data-open="sound" title="Sonido">🔊<span>Sonido</span></button>
+      <button class="hbtn" id="btnHome" title="Menú">🏠<span>Menú</span></button>
+    </div>
+  </div>
+
+  <div id="goal" class="goal">
+    <div class="goal-ttl">OBJETIVO</div>
+    <div id="goalTxt">—</div>
+    <button id="goalBtn" class="btn btn-green btn-sm hidden">Reclamar <span id="goalGems"></span></button>
+  </div>
+
+  <div id="pickHint" class="pick-hint hidden">Toca un hueco libre para colocar <b id="pickName"></b> <button id="pickCancel" class="btn btn-sm btn-red">Cancelar</button></div>
+
+  <!-- Panel de máquina -->
+  <aside id="panel" class="panel hidden">
+    <button class="close" id="panelClose">✕</button>
+    <div id="panelBody"></div>
+  </aside>
+
+  <div id="toasts"></div>
+</div>
+
+<!-- ============ MENÚ PRINCIPAL ============ -->
+<div id="menu" class="screen">
+  <div class="menu-bg"></div>
+  <div class="menu-inner">
+    <div class="logo">
+      <div class="logo-top">CASINO</div>
+      <div class="logo-main">IDLE TYCOON</div>
+      <div class="logo-sub">♠ ♥ Construye tu imperio del azar ♦ ♣</div>
+    </div>
+    <div class="menu-btns">
+      <button class="mbtn mbtn-play" id="mPlay">▶ JUGAR</button>
+      <button class="mbtn" data-open="shop">🛒 ELEGIR / COMPRAR</button>
+      <button class="mbtn" data-open="rooms">🏛️ SALAS</button>
+      <button class="mbtn" data-open="sound">🔊 SONIDO</button>
+    </div>
+    <div class="menu-foot" id="menuStats"></div>
+  </div>
+</div>
+
+<!-- ============ MODALES ============ -->
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <button class="close" id="modalClose">✕</button>
+    <h2 id="modalTitle"></h2>
+    <div id="modalTabs" class="tabs"></div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<script src="game.js"></script>
