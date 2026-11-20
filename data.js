@@ -16,13 +16,13 @@ const ROOMS = [
 
 // cat: slot = "Máquinas", table = "Juegos"
 const TYPES = {
-  lucky:    { cat: 'slot',  name: 'Lucky 7',        sprite: 'slot_lucky', hue: 0,   base: 1,    cycle: 2.5, place: 10,    license: 0,     w: 255, ay: .80, desc: 'La clásica tragaperras de toda la vida.' },
-  emerald:  { cat: 'slot',  name: 'Esmeralda 7',    sprite: 'slot_emerald', hue: 0, base: 5,    cycle: 3,   place: 150,   license: 400,   w: 255, ay: .80, desc: 'Brilla en verde. Paga 5 veces más.' },
-  sapphire: { cat: 'slot',  name: 'Zafiro Deluxe',  sprite: 'slot_sapphire', hue: 0, base: 22,   cycle: 3.5, place: 1800,  license: 5000,  w: 255, ay: .80, desc: 'Tragaperras premium de luces azules.' },
-  amethyst: { cat: 'slot',  name: 'Amatista Royal', sprite: 'slot_amethyst', hue: 0, base: 90,   cycle: 4,   place: 1.5e4, license: 4e4,   w: 255, ay: .80, desc: 'La joya de las tragaperras.' },
-  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 1.2e5, license: 4e5,   w: 340, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
-  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1.5e6, license: 5e6,   w: 340, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
-  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 2e7,   license: 7e7,   w: 350, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
+  lucky:    { cat: 'slot',  name: 'Lucky 7',        sprite: 'slot_lucky', hue: 0,   base: 1,    cycle: 2.5, place: 10,    license: 0,     w: 225, ay: .80, desc: 'La clásica tragaperras de toda la vida.' },
+  emerald:  { cat: 'slot',  name: 'Esmeralda 7',    sprite: 'slot_emerald', hue: 0, base: 5,    cycle: 3,   place: 150,   license: 400,   w: 225, ay: .80, desc: 'Brilla en verde. Paga 5 veces más.' },
+  sapphire: { cat: 'slot',  name: 'Zafiro Deluxe',  sprite: 'slot_sapphire', hue: 0, base: 22,   cycle: 3.5, place: 1800,  license: 5000,  w: 225, ay: .80, desc: 'Tragaperras premium de luces azules.' },
+  amethyst: { cat: 'slot',  name: 'Amatista Royal', sprite: 'slot_amethyst', hue: 0, base: 90,   cycle: 4,   place: 1.5e4, license: 4e4,   w: 225, ay: .80, desc: 'La joya de las tragaperras.' },
+  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 1.2e5, license: 4e5,   w: 300, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
+  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1.5e6, license: 5e6,   w: 300, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
+  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 2e7,   license: 7e7,   w: 310, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
 };
 
 const PLAYERS = {
@@ -47,18 +47,22 @@ const REEL_FIT = {
   "lucky_1":{"tl":[0.2731,0.3357],"tr":[0.5893,0.4536],"bl":[0.2731,0.4643]},
   "lucky_2":{"tl":[0.2716,0.3446],"tr":[0.5885,0.4625],"bl":[0.2716,0.4625]},
   "lucky_3":{"tl":[0.2737,0.3464],"tr":[0.5885,0.4643],"bl":[0.2737,0.4607]},
+  "lucky_4":{"tl":[0.276,0.35],"tr":[0.584,0.4589],"bl":[0.276,0.4643]},
   "emerald_0":{"tl":[0.2348,0.3446],"tr":[0.6289,0.4018],"bl":[0.2348,0.4804]},
   "emerald_1":{"tl":[0.2343,0.3429],"tr":[0.6276,0.4018],"bl":[0.2343,0.4804]},
   "emerald_2":{"tl":[0.2348,0.3411],"tr":[0.6268,0.4018],"bl":[0.2348,0.4732]},
   "emerald_3":{"tl":[0.2346,0.3714],"tr":[0.6228,0.4268],"bl":[0.2346,0.4821]},
+  "emerald_4":{"tl":[0.2375,0.375],"tr":[0.6167,0.4268],"bl":[0.2375,0.4804]},
   "sapphire_0":{"tl":[0.2359,0.3304],"tr":[0.6117,0.4018],"bl":[0.2359,0.4893]},
   "sapphire_1":{"tl":[0.2349,0.3304],"tr":[0.6112,0.4018],"bl":[0.2349,0.4893]},
   "sapphire_2":{"tl":[0.2343,0.3304],"tr":[0.6109,0.4018],"bl":[0.2343,0.4893]},
   "sapphire_3":{"tl":[0.2349,0.3304],"tr":[0.6112,0.4018],"bl":[0.2349,0.4893]},
+  "sapphire_4":{"tl":[0.2345,0.3304],"tr":[0.6098,0.4018],"bl":[0.2345,0.4893]},
   "amethyst_0":{"tl":[0.2587,0.3589],"tr":[0.6087,0.4304],"bl":[0.2587,0.4625]},
   "amethyst_1":{"tl":[0.2565,0.3589],"tr":[0.6087,0.4304],"bl":[0.2565,0.4661]},
   "amethyst_2":{"tl":[0.2581,0.3607],"tr":[0.6074,0.4304],"bl":[0.2581,0.4643]},
-  "amethyst_3":{"tl":[0.2597,0.3661],"tr":[0.603,0.4375],"bl":[0.2597,0.4571]}};
+  "amethyst_3":{"tl":[0.2597,0.3661],"tr":[0.603,0.4375],"bl":[0.2597,0.4571]},
+  "amethyst_4":{"tl":[0.6645,0.4393],"tr":[0.7707,0.4161],"bl":[0.6645,0.4714]}};
 
 
 /* ----------------------------- MISIONES (missions.js) ------------------------------ */
@@ -89,7 +93,7 @@ const DAILY = [
   { minutes: 15, min: 2000, gems: 20 },
 ];
 const TEST_BONUS = 10000; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
-const SPOTS_PER_ROOM = 6;
+const SPOTS_PER_ROOM = 9;
 
 /* ------------- Suelo isométrico (coordenadas de la imagen 1536²) ------------- */
 const FLOOR = { B: [770, 620], R: [1480, 1010], L: [60, 1010] };
@@ -97,7 +101,8 @@ function floorPt(u, v) {
   const { B, R, L } = FLOOR;
   return [B[0] + u * (R[0] - B[0]) + v * (L[0] - B[0]), B[1] + u * (R[1] - B[1]) + v * (L[1] - B[1])];
 }
-const SPOT_UV = [[0.36, 0.40], [0.64, 0.38], [0.92, 0.36], [0.34, 0.78], [0.62, 0.76], [0.90, 0.74]];
+// 3×3 huecos; los pasillos de los paseantes (render.js) pasan entre ellos
+const SPOT_UV = [[0.36, 0.28], [0.62, 0.28], [0.88, 0.28], [0.36, 0.56], [0.62, 0.56], [0.88, 0.56], [0.36, 0.84], [0.62, 0.84], [0.88, 0.84]];
 let SPOTS = SPOT_UV.map(([u, v]) => floorPt(u, v));
 
 /* ----------------------------- OBJETIVOS (FTUE) ------------------------------ */

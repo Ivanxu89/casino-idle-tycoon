@@ -14,7 +14,7 @@ function giftSpot() {
     if (u > 0.3 && u < 0.7 && v < 0.2) continue; // mostrador
     if (SPOT_UV.every(([su, sv]) => Math.hypot(u - su, v - sv) > 0.17)) return [u, v];
   }
-  return [0.5, 0.58];
+  return [0.49, 0.42];
 }
 
 function giftReward() {

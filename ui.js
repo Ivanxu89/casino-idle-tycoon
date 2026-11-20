@@ -62,17 +62,23 @@ function skipUpgrade(i) {
   if (S.gems < g) { Snd.play('error'); toast('Te faltan gemas', true); return; }
   S.gems -= g; m.upEnd = Date.now(); renderPanel();
 }
+// Clientes limitados: cada contratación ocupa una máquina. Si no te queda ninguno libre de ese tipo,
+// tocarlo en el panel contrata uno nuevo (si te llega el dinero) y lo sienta en la máquina.
 function setPlayer(i, pid) {
   const m = S.machines[S.room][i];
-  if (!S.players[pid]) { openModal('shop', 'players'); return; }
+  if (m.player === pid) return;
+  if (playerFree(pid) <= 0 && !hirePlayer(pid)) return;
   m.player = pid; Snd.play('click'); renderPanel(); save();
 }
-function buyPlayer(pid) {
-  const P = PLAYERS[pid];
-  if (S.players[pid]) return;
-  if (S.money < P.cost) { Snd.play('error'); toast('Necesitas ' + money(P.cost), true); return; }
-  S.money -= P.cost; S.players[pid] = true; Snd.play('buy'); toast(`🎉 ${P.name} desbloqueado (x${P.mult})`); save(); refreshModal();
+function hirePlayer(pid) {
+  const P = PLAYERS[pid], c = hireCost(pid);
+  if (S.money < c) { Snd.play('error'); toast(`Contratar a ${P.name} cuesta ${money(c)}`, true); return false; }
+  const first = !S.players[pid];
+  S.money -= c; S.players[pid] = (S.players[pid] || 0) + 1; Snd.play('buy');
+  toast(first ? `🎉 ${P.name} contratado (x${P.mult})` : `🧑 Otro ${P.name} contratado · tienes ${S.players[pid]}`);
+  save(); refreshModal(); return true;
 }
+const buyPlayer = hirePlayer;
 function buyLicense(id) {
   const T = TYPES[id];
   if (S.licenses[id]) return;
@@ -144,7 +150,7 @@ function renderPanel() {
   if ($('#panel').classList.contains('hidden')) { $('#panel').classList.remove('hidden'); resize(); }
   $('#panelBody').innerHTML = `
     <div class="p-head">
-      <img src="${A(`assets/${T.sprite}_${tier}.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg) drop-shadow(0 4px 6px #0008)` : ''}">
+      <img src="${A(`assets/${T.sprite}_${spriteTier(T, tier)}.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg) drop-shadow(0 4px 6px #0008)` : ''}">
       <div><div class="p-name">${T.name}</div><div class="p-lvl">NIVEL ${m.level}${maxed ? ' (MAX)' : ''}</div>
       <div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:4px">${T.cat === 'slot' ? 'Máquina' : 'Juego de mesa'} · ${ROOMS[r].name}</div></div>
     </div>
@@ -161,17 +167,19 @@ function renderPanel() {
       <div class="p-actions"><button class="btn btn-green" id="bUp" ${S.money < cost ? 'disabled' : ''}><span>Mejorar a Nv ${m.level + 1}</span><span>${money(cost)} · ⏱${fmtTime(dur)}</span></button></div>`}
     <div class="sec-ttl">HITOS (x2 ingresos)</div>
     <div class="milestones">${MILESTONES.map(x => `<span class="ms ${m.level >= x ? 'done' : ''}">Nv ${x}</span>`).join('')}</div>
-    ${nextMs ? `<div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:6px">Próximo hito: Nv ${nextMs} → ingresos x2 y +${2 + r}◆. Aspecto nuevo en Nv 25 / 50 / 100.</div>` : ''}
+    ${nextMs ? `<div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:6px">Próximo hito: Nv ${nextMs} → ingresos x2 y +${2 + r}◆. </div>` : ''}
+    ${nextVisualLevel(m.level) ? `<div class="stat"><span>✨ Mejora visual en Nv ${nextVisualLevel(m.level)}</span><img src="${A(`assets/${T.sprite}_${Math.min(tierOf(m.level) + 1, T.cat === 'slot' ? 4 : 3)}.webp`)}" style="height:46px"></div>` : '<div class="stat"><span>✨ Aspecto máximo conseguido</span></div>'}
     <div class="sec-ttl">ELIGE CLIENTE</div>
     <div class="pl-grid" id="plGrid"></div>
   `;
   const grid = $('#plGrid');
   for (const [pid, PP] of Object.entries(PLAYERS)) {
-    const own = S.players[pid];
+    const free = playerFree(pid), here = m.player === pid, can = here || free > 0;
     const d = document.createElement('div');
-    d.className = 'pl-card' + (m.player === pid ? ' sel' : '') + (own ? '' : ' locked');
+    d.className = 'pl-card' + (here ? ' sel' : '') + (can ? '' : ' locked');
     d.appendChild(portrait(pid, 90));
-    d.insertAdjacentHTML('beforeend', `<div>${PP.name}</div><div class="m">${own ? 'x' + PP.mult : money(PP.cost)}</div>${own ? '' : '<span class="lock">🔒</span>'}`);
+    const info = pid === 'student' ? 'x1 · ∞' : here ? `x${PP.mult} · aquí` : free > 0 ? `x${PP.mult} · ${free} libre${free > 1 ? 's' : ''}` : money(hireCost(pid));
+    d.insertAdjacentHTML('beforeend', `<div>${PP.name}</div><div class="m">${info}</div>${can ? '' : '<span class="lock">💰</span>'}`);
     d.onclick = () => setPlayer(i, pid);
     grid.appendChild(d);
   }
@@ -219,18 +227,19 @@ function refreshModal() {
     const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
     if (modalTab === 'players') {
       for (const [pid, P] of Object.entries(PLAYERS)) {
-        const own = S.players[pid];
-        const c = document.createElement('div'); c.className = 'card' + (own ? ' owned' : ' locked');
+        const own = playerOwned(pid), used = playerUsed(pid), cost = hireCost(pid);
+        const c = document.createElement('div'); c.className = 'card' + (own > 0 ? ' owned' : ' locked');
         const im = document.createElement('div'); im.className = 'img'; im.appendChild(portrait(pid, 130)); c.appendChild(im);
         c.insertAdjacentHTML('beforeend', `
-          ${own ? '<span class="tag">DESBLOQUEADO</span>' : ''}
+          ${own > 0 ? `<span class="tag">${pid === 'student' ? 'GRATIS' : 'TIENES ' + own}</span>` : ''}
           <h3>${P.name}</h3>
           <span class="wealth" style="background:${P.wc};color:#12062a">${P.wealth}</span>
           <div class="d">${P.desc}</div>
-          <div class="kv"><span>Multiplicador</span><b>x${P.mult}</b></div>`);
+          <div class="kv"><span>Multiplicador</span><b>x${P.mult}</b></div>
+          <div class="kv"><span>En tus máquinas</span><b>${pid === 'student' ? used + ' (ilimitados)' : used + ' de ' + own}</b></div>`);
         const b = document.createElement('button');
-        b.className = 'btn ' + (own ? 'btn-dark' : 'btn-gold'); b.textContent = own ? 'Asignar desde una máquina' : 'Desbloquear ' + money(P.cost);
-        if (own) b.disabled = true; else { b.disabled = S.money < P.cost; b.onclick = () => buyPlayer(pid); }
+        if (pid === 'student') { b.className = 'btn btn-dark'; b.textContent = 'Siempre disponible'; b.disabled = true; }
+        else { b.className = 'btn btn-gold'; b.textContent = (own ? 'Contratar otro · ' : 'Contratar · ') + money(cost); b.disabled = S.money < cost; b.onclick = () => hirePlayer(pid); }
         c.appendChild(b); cards.appendChild(c);
       }
     } else {

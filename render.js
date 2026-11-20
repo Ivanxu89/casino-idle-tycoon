@@ -2,7 +2,9 @@
 /* Carga de imágenes, personajes, dibujo isométrico, animaciones y clientes paseando. Dueño: Iván. */
 /* ----------------------------- IMÁGENES ------------------------------ */
 const IMG = {};
-const SPR = {}; // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
+const SPR = {};
+// las tragaperras tienen 5 aspectos (0-4); las mesas 4 (0-3)
+const spriteTier = (T, t) => Math.min(t, T.cat === 'slot' ? 4 : 3); // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
 const AVATARS = Object.keys(PLAYERS);
 const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag'];
 const SYM_IMGS = ['sym_7', 'sym_cherry', 'sym_bell', 'sym_bar', 'sym_diamond', 'sym_lemon', 'sym_star', 'sym_crown'];
@@ -13,12 +15,12 @@ async function loadAssets() {
   const jobs = [], get = (key, file) => jobs.push(loadImg(A('assets/' + file)).then(im => (IMG[key] = im)));
   ROOMS.forEach((r, i) => get('room' + i, r.img));
   const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
-  for (const s of sprites) for (let t = 0; t < 4; t++) get(`${s}_${t}`, `${s}_${t}.webp`);
+  for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
-  for (const pid of AVATARS) get('avatar_' + pid, `avatar_${pid}.webp`);
+  for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); }
   for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
-  for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t < 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${t}`];
+  for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t <= 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${spriteTier(T, t)}`];
   // iconos de moneda y gema del HUD
   $('#hudCoin').src = A('assets/ui_coin.webp'); $('#hudGem').src = A('assets/ui_gem.webp');
 }
@@ -27,7 +29,28 @@ async function loadAssets() {
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
 // Dibuja a un cliente con los pies en (x,y) y altura h. cheer 0..1 = salta de alegría,
 // walk = fase del paso (null si está quieto), flip = espejo (mira hacia la derecha).
+// Hoja de animación de Magnific: 8 fotogramas de 300x460, pies en y=448, reposo de 380 de alto.
+// 0-3 caminar · 4 reposo · 5 parpadeo · 6 celebrar · 7 saltar
+const ANIM = { cw: 300, ch: 460, base: 448, idleH: 380 };
+function personFrame(t, cheer, walk) {
+  if (cheer > 0) return cheer > 0.55 ? 7 : 6;
+  if (walk !== null) return Math.floor((((walk % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * 4);
+  return (t % 3.7) < 0.14 ? 5 : 4;
+}
 function drawPerson(ctx, x, y, h, pid, t = 0, cheer = 0, walk = null, flip = false) {
+  const sheet = IMG['anim_' + pid];
+  if (!sheet) return drawPersonStill(ctx, x, y, h, pid, t, cheer, walk, flip);
+  const k = h / ANIM.idleH, f = personFrame(t, cheer, walk);
+  const bob = walk === null && cheer <= 0 ? Math.sin(t * 2.6) * h * 0.006 : 0;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, h * 0.22 * (f === 7 ? 0.75 : 1), h * 0.05, 0, 0, 7); ctx.fill();
+  ctx.translate(x, y + bob);
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
+  ctx.restore();
+}
+// respaldo: una sola imagen con movimiento por código (si la hoja no ha cargado)
+function drawPersonStill(ctx, x, y, h, pid, t = 0, cheer = 0, walk = null, flip = false) {
   const im = IMG['avatar_' + pid]; if (!im) return;
   const w = im.width * h / im.height;
   const ws = walk === null ? 0 : Math.sin(walk);
@@ -48,7 +71,7 @@ function portrait(pid, size = 110) {
   const x = c.getContext('2d');
   const g = x.createRadialGradient(size / 2, size * 0.45, 4, size / 2, size / 2, size * 0.7);
   g.addColorStop(0, PLAYERS[pid].wc + '88'); g.addColorStop(1, '#1d0c4000'); x.fillStyle = g; x.fillRect(0, 0, size, size);
-  drawPerson(x, size / 2, size * 0.97, size * 0.92, pid, 0, 0);
+  drawPerson(x, size / 2, size * 0.97, size * 0.8, pid, 1, 0);
   return c;
 }
 
@@ -72,7 +95,7 @@ const toRoom = (px, py) => [(px - view.ox) / view.s, (py - view.oy) / view.s];
 
 const FX = { floats: [], parts: [] };
 const RT = new Map(); // estado de animación por máquina
-const rt = (r, i) => { const k = r + '_' + i; if (!RT.has(k)) RT.set(k, { spin: 0, bounce: 0, cheer: 0, card: 0, dice: 0, flash: 0 }); return RT.get(k); };
+const rt = (r, i) => { const k = r + '_' + i; if (!RT.has(k)) RT.set(k, { spin: 0, bounce: 0, cheer: 0, card: 0, dice: 0, flash: 0, evolve: 0 }); return RT.get(k); };
 let hover = -1, selected = -1, pickType = null, debug = false, time = 0;
 
 // geometría de máquina en coordenadas de sala
@@ -135,6 +158,40 @@ function drawReels(g, type, tier, prog) {
   if (layer) ctx.drawImage(layer, g.x, g.y, g.w, g.h);
 }
 // destello dorado sobre los rodillos al cobrar
+// Mejora visible al llegar a nivel 10, 30, 60 y 100: haz de luz, destello blanco, rayos y monedas
+function evolveMachine(r, i, m) {
+  const t = tierOf(m.level), T = TYPES[m.type];
+  if (r === S.room) {
+    const A = rt(r, i), g = mGeom(i, m);
+    A.evolve = 1; A.bounce = 1; A.cheer = 1;
+    FX.floats.push({ x: g.sx, y: g.y - 60, txt: `¡NUEVO ASPECTO ${t + 1}/${VISUAL_LEVELS.length + 1}!`, col: '#8ff8ff', size: 48, life: 2.4, vy: -32 });
+    for (let k = 0; k < 24; k++) FX.parts.push({ x: g.sx + (Math.random() - 0.5) * g.w * 0.6, y: g.y + g.h * 0.4, vx: (Math.random() - 0.5) * 520, vy: -420 - Math.random() * 380, life: 1.6, rot: Math.random() * 6 });
+    Snd.play('level'); setTimeout(() => Snd.play('win'), 450);
+  }
+  toast(`✨ ¡${T.name} se transforma! Aspecto ${t + 1} de ${VISUAL_LEVELS.length + 1}`);
+}
+// detrás de la máquina: haz de luz y rayos girando
+function drawEvolveBack(g, e) {
+  const a = Math.sin(e * Math.PI);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const beam = ctx.createLinearGradient(0, g.y + g.h, 0, g.y - g.h * 0.9);
+  beam.addColorStop(0, `rgba(255,240,170,${0.75 * a})`); beam.addColorStop(1, 'rgba(160,240,255,0)');
+  ctx.fillStyle = beam; ctx.fillRect(g.sx - g.w * 0.42, g.y - g.h * 0.9, g.w * 0.84, g.h * 1.9);
+  ctx.translate(g.sx, g.y + g.h * 0.45); ctx.rotate(time * 1.5);
+  for (let k = 0; k < 12; k++) {
+    ctx.rotate(Math.PI / 6);
+    ctx.fillStyle = `rgba(255,230,140,${0.28 * a})`;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(g.w * 0.08, g.w * 1.1); ctx.lineTo(-g.w * 0.08, g.w * 1.1); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+// encima del sprite: destello blanco que pica en mitad de la animación (ahí cambia el aspecto)
+function drawEvolveFront(g, e) {
+  const a = Math.max(0, 1 - Math.abs(e - 0.55) * 2.6);
+  if (a <= 0 || !g.img) return;
+  ctx.save(); ctx.globalAlpha = a; ctx.filter = 'brightness(0) invert(1)'; ctx.drawImage(g.img, g.x, g.y, g.w, g.h); ctx.restore();
+}
+
 function drawReelFlash(g, type, tier, a) {
   const layer = reelLayer(type, tier, (c, W, H) => { c.fillStyle = '#fff3a0'; c.fillRect(0, 0, W, H); });
   if (!layer) return;
@@ -190,7 +247,9 @@ function drawMachine(r, i, m) {
     // máquina con rebote
     const b = A.bounce > 0 ? Math.sin(A.bounce * Math.PI) * 0.06 : 0;
     ctx.save(); ctx.translate(sx, g.y + g.h); ctx.scale(1 + b * 0.5, 1 - b); ctx.translate(-sx, -(g.y + g.h));
+    if (A.evolve > 0) drawEvolveBack(g, A.evolve);
     if (g.img) ctx.drawImage(g.img, g.x, g.y, g.w, g.h);
+    if (A.evolve > 0) drawEvolveFront(g, A.evolve);
     if (T.cat === 'slot') {
       // halo de las bombillas de la marquesina (parpadea; más fuerte al cobrar)
       const lx = g.x + g.w * 0.48, ly = g.y + g.h * 0.12;
@@ -306,9 +365,9 @@ function drawTableAnim(type, g, A) {
 /* ----------------------------- PASEANTES ------------------------------ */
 // Los clientes caminan por pasillos (rejilla isométrica entre máquinas), entran y salen por la puerta.
 // Algunos llevan propina ($ dorado sobre la cabeza): tócalos para cobrarla.
-const AISLE_U = [0.12, 0.49, 0.77];
-const AISLE_V = [0.18, 0.58, 0.96];
-const DOOR_IN = [0.12, 0.58], DOOR = [-0.04, 0.58];
+const AISLE_U = [0.15, 0.49, 0.75, 0.99];
+const AISLE_V = [0.13, 0.42, 0.70, 0.98];
+const DOOR_IN = [0.15, 0.70], DOOR = [-0.04, 0.70];
 const EMO = ['😍', '🤑', '🎰', '✨', '🍀', '😎', '🥳'];
 const PID_LIST = Object.keys(PLAYERS);
 let WALK = [];
