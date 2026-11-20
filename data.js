@@ -39,6 +39,34 @@ const PLAYERS = {
 
 const MILESTONES = [10, 25, 50, 100, 150, 200];
 const MAX_LEVEL = 200;
+
+/* ----------------------------- MISIONES (missions.js) ------------------------------ */
+// Cada misión tiene escalones: al llegar a uno lo reclamas y aparece el siguiente, más difícil.
+// La recompensa de cada escalón k (0, 1, 2…) son gemas y dinero; ver missionReward() en missions.js.
+const MISSIONS = [
+  { id: 'slots',   icon: '🎰', name: 'Coleccionista de tragaperras', goal: n => `Ten ${n} tragaperras en tu casino`,        tiers: [2, 4, 6, 10, 15, 20],               val: () => countCat('slot') },
+  { id: 'tables',  icon: '🃏', name: 'Mesas de juego',               goal: n => n === 1 ? 'Pon tu primera mesa de juego' : `Ten ${n} mesas de juego`,                  tiers: [1, 2, 4, 6, 10],                    val: () => countCat('table') },
+  { id: 'level',   icon: '⬆️', name: 'Máquina estrella',             goal: n => `Sube una máquina a nivel ${n}`,             tiers: [5, 10, 25, 50, 100, 150, 200],      val: () => maxLevel() },
+  { id: 'levels',  icon: '🔧', name: 'Mejoras sin parar',            goal: n => `Suma ${n} niveles entre todas tus máquinas`, tiers: [15, 40, 100, 250, 500, 1000],       val: () => allMachines().reduce((a, m) => a + m.level, 0) },
+  { id: 'players', icon: '🧑', name: 'Lista VIP',                    goal: n => `Desbloquea ${n} clientes`,                  tiers: [2, 3, 4, 5, 6, 7, 8, 9],            val: () => Object.keys(S.players).length },
+  { id: 'rooms',   icon: '🏛️', name: 'Imperio del juego',            goal: n => `Abre ${n} salas`,                           tiers: [2, 3, 4, 5],                        val: () => S.rooms.filter(Boolean).length },
+  { id: 'income',  icon: '💰', name: 'Lluvia de dinero',             goal: n => `Gana ${money(n)} por segundo`,              tiers: [50, 500, 5e3, 5e4, 5e5, 5e6, 5e7],  val: () => totalPS() },
+  { id: 'gifts',   icon: '🎁', name: 'Cazador de regalos',           goal: n => n === 1 ? 'Abre tu primer regalo misterioso' : `Abre ${n} regalos misteriosos`,            tiers: [1, 5, 15, 40, 100],                 val: () => S.stats.gifts },
+  { id: 'days',    icon: '📅', name: 'Cliente fiel',                 goal: n => `Recoge ${n} recompensas diarias`,           tiers: [2, 7, 14, 30, 60],                  val: () => S.stats.days },
+];
+
+/* ----------------------------- RECOMPENSA DIARIA (missions.js) ------------------------------ */
+// Racha de 7 días: si entras días seguidos subes de día; si faltas uno, vuelves al día 1. Tras el día 7, otra vez el 1.
+// money = minutos de ingresos de tu casino (con un mínimo), gems = gemas.
+const DAILY = [
+  { minutes: 1,  min: 100,  gems: 2 },
+  { minutes: 2,  min: 200,  gems: 3 },
+  { minutes: 3,  min: 300,  gems: 4 },
+  { minutes: 4,  min: 400,  gems: 5 },
+  { minutes: 5,  min: 600,  gems: 6 },
+  { minutes: 7,  min: 800,  gems: 8 },
+  { minutes: 15, min: 2000, gems: 20 },
+];
 const TEST_BONUS = 10000; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
 const SPOTS_PER_ROOM = 6;
 

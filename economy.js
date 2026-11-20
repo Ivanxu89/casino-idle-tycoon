@@ -14,6 +14,7 @@ function freshState() {
     goal: 0,
     chips: 0, prestiges: 0, runEarned: 0,
     gift: null, giftNext: 0, // regalo misterioso (gift.js)
+    missions: {}, daily: { last: null, streak: 0 }, stats: { gifts: 0, days: 0 }, // misiones y recompensa diaria (missions.js)
     lastSave: Date.now(),
   };
 }
@@ -85,7 +86,8 @@ function doPrestige() {
   // confirmación en dos toques (los diálogos confirm() no funcionan dentro del visor web)
   if (Date.now() > prestigeArmUntil) { prestigeArmUntil = Date.now() + 4000; Snd.play('click'); refreshModal(); return; }
   prestigeArmUntil = 0;
-  const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned };
+  const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned,
+    missions: S.missions, daily: S.daily, stats: S.stats };
   S = Object.assign(freshState(), keep);
   giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);

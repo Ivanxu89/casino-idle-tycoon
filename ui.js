@@ -322,6 +322,8 @@ function refreshModal() {
         <div style="color:var(--muted)">Consejo: vende cuando tu progreso se frene; volverás mucho más rápido hasta donde estabas.</div>
       </div>`;
     $('#bPrest').onclick = doPrestige;
+  } else if (modalKind === 'missions') {
+    renderMissions(tabs, body);
   } else if (modalKind === 'offline') {
     $('#modalTitle').textContent = '¡BIENVENIDO DE NUEVO!';
     const { amt, secs } = offlineData;
@@ -363,5 +365,8 @@ function updateHUD() {
   const g = chipsToGain();
   $('#btnPrestige').classList.toggle('ready', g >= 1);
   $('#prestigeBadge').textContent = g >= 1 ? '+' + fmt(g) : '';
+  const pend = missionsPending();
+  $('#missionsBadge').textContent = pend ? pend : '';
+  $('#btnMissions').classList.toggle('ready', pend > 0);
   updateRoomArrows();
 }

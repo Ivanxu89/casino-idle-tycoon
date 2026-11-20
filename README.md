@@ -20,6 +20,8 @@ Prototipo de juego IDLE tycoon de casino en vista isométrica: coloca y mejora t
 | `render.js` | Imágenes, personajes, dibujo isométrico, animaciones, clientes paseando (Iván) |
 | `ui.js` | Ratón y teclado, acciones, panel de máquina, modales, objetivos, HUD (Iván) |
 | `slot-room.js` | Entrar en una tragaperras con doble clic y jugar la slot en primera persona (Iván) |
+| `gift.js` | Regalo misterioso: bolsa de dinero escondida cada 5 minutos (Iván) |
+| `missions.js` | Misiones por escalones y recompensa diaria con racha de 7 días; los datos están en `data.js` (`MISSIONS`, `DAILY`) (Iván) |
 | `slots/` | Cada slot jugable es un HTML propio; hoy `happy-dinner.html` |
 | `online.js` | Cuentas, nube, amigos, ranking y retos (amigo; vacío por ahora) |
 | `main.js` | Bucle principal y arranque; se carga el último |
@@ -30,7 +32,7 @@ Prototipo de juego IDLE tycoon de casino en vista isométrica: coloca y mejora t
 ## Cambiar el balance
 Los datos están en `data.js` (`ROOMS`, `TYPES`, `PLAYERS`, `MILESTONES`, `GOALS`) y las fórmulas `upgradeCost` / `upgradeTime` en `economy.js`.
 
-Los scripts se cargan en `index.html` en un orden fijo (datos → economía → audio → render → ui → slot-room → online → main).
+Los scripts se cargan en `index.html` en un orden fijo (datos → economía → audio → render → ui → slot-room → gift → missions → online → main).
 
 ## Añadir otra slot jugable
 1. Copia su HTML en `slots/`. Debe aceptar el saldo por `window.name` (`{"balance":…, "embedded":true}`) y enviar `slotsim:balance` y `slotsim:close` al juego con `postMessage`, como hace `happy-dinner.html` en su último `<script>`.

@@ -44,6 +44,7 @@ function openGift() {
   if (!giftHere()) return;
   const [x, y] = giftPos(), amt = giftReward();
   S.gift = null; S.giftNext = Date.now() + GIFT_EVERY;
+  S.stats.gifts++;
   earn(amt);
   giftOpen = { x, y, t: 0 };
   FX.floats.push({ x, y: y - 110, txt: '🎁 +' + money(amt), col: '#ffe27a', size: 40, life: 1.8, vy: -55 });

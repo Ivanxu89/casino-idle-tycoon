@@ -92,6 +92,7 @@ function startGame() {
   $('#menu').classList.add('hidden');
   $('#hRoom').textContent = ROOMS[S.room].name;
   resize();
+  if (dailyState().can && !modalKind) openModal('missions', 'daily'); // recompensa diaria al entrar
 }
 function showMenu() {
   started = false; closePanel(); cancelPick();
