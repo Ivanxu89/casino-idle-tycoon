@@ -36,7 +36,7 @@ Los scripts se cargan en `index.html` en un orden fijo (datos → economía → 
 
 ## Añadir otra slot jugable
 1. Copia su HTML en `slots/`. Debe aceptar el saldo por `window.name` (`{"balance":…, "embedded":true}`) y enviar `slotsim:balance` y `slotsim:close` al juego con `postMessage`, como hace `happy-dinner.html` en su último `<script>`.
-2. Añádela a `SLOT_GAMES` en `slot-room.js` y elige qué máquinas la abren en `SLOT_FOR_TYPE`.
+2. Añádela a `SLOT_GAMES` en `slot-room.js` (nombre, archivo, icono y descripción corta) y ponla en `SLOT_LOBBY`, la lista del submenú que sale al entrar en una tragaperras. Ahora mismo `SLOT_LOBBY` repite Happy Dinner 12 veces para ver el menú lleno.
 3. Ejecuta `python build.py`: la incrusta sola en el archivo único. Si añades un archivo, ponlo en su sitio de esa lista; `build.py` los incrusta en el mismo orden.
 
 Tras cambiar algo, regenera la versión de un solo archivo:
