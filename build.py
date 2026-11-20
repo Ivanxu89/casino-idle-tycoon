@@ -6,6 +6,7 @@ Solo usa la librería estándar de Python.
 import base64
 import json
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DIST = ROOT / 'dist'
@@ -17,15 +18,19 @@ for f in sorted((ROOT / 'assets').glob('*.webp')):
 
 css = (ROOT / 'style.css').read_text(encoding='utf-8')
 css = css.replace('url(assets/room_0.webp)', f'url({assets["assets/room_0.webp"]})')
-js = (ROOT / 'game.js').read_text(encoding='utf-8')
 html = (ROOT / 'index.html').read_text(encoding='utf-8')
-
 html = html.replace('<link rel="stylesheet" href="style.css">', f'<style>\n{css}\n</style>')
-html = html.replace(
-    '<script src="game.js"></script>',
-    f'<script>window.ASSETS = {json.dumps(assets)};</script>\n<script>\n{js}\n</script>',
-)
-assert 'href="style.css"' not in html and 'src="game.js"' not in html, 'plantilla index.html cambiada'
+
+# Cada <script src="x.js"> de index.html se incrusta en su sitio, respetando el orden de carga.
+scripts = re.findall(r'<script src="([\w.-]+\.js)"></script>', html)
+assert scripts, 'no hay <script src> en index.html'
+for i, name in enumerate(scripts):
+    js = (ROOT / name).read_text(encoding='utf-8')
+    inline = f'<script>/* {name} */\n{js}\n</script>'
+    if i == 0:
+        inline = f'<script>window.ASSETS = {json.dumps(assets)};</script>\n' + inline
+    html = html.replace(f'<script src="{name}"></script>', inline)
+assert 'href="style.css"' not in html and '<script src=' not in html, 'quedan archivos sin incrustar'
 
 out = DIST / 'CasinoIdleTycoon.html'
 out.write_text(html, encoding='utf-8')
