@@ -54,28 +54,15 @@ function openGift() {
   save();
 }
 
-// la bolsa: saco con lazo y $, brillo suave y un destello cada pocos segundos para poder encontrarla
+// la bolsa (arte de Magnific) con brillo suave; el destello va aparte, por encima de todo
 function drawGift() {
-  const [x, y] = giftPos(), bob = Math.sin(time * 3) * 3, s = 1;
+  const [x, y] = giftPos(), bob = Math.sin(time * 3) * 4, im = IMG.ui_bag;
   ctx.save(); ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 26, 8, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 34, 10, 0, 0, 7); ctx.fill();
   const glow = 0.25 + 0.2 * Math.sin(time * 2.4);
-  const gr = ctx.createRadialGradient(0, -30, 4, 0, -30, 60); gr.addColorStop(0, `rgba(255,220,110,${glow})`); gr.addColorStop(1, 'rgba(255,200,60,0)');
-  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, -30, 60, 0, 7); ctx.fill();
-  ctx.translate(0, bob); ctx.scale(s, s);
-  ctx.lineWidth = 3; ctx.strokeStyle = '#5a3208'; ctx.lineJoin = 'round';
-  // saco
-  const sack = ctx.createLinearGradient(-26, -50, 26, 0); sack.addColorStop(0, '#d9a050'); sack.addColorStop(1, '#8a5420');
-  ctx.fillStyle = sack; ctx.beginPath();
-  ctx.moveTo(-10, -50); ctx.bezierCurveTo(-34, -40, -32, -2, 0, -2); ctx.bezierCurveTo(32, -2, 34, -40, 10, -50); ctx.closePath(); ctx.fill(); ctx.stroke();
-  // boca y lazo
-  ctx.fillStyle = '#c08a40'; ctx.beginPath(); ctx.moveTo(-10, -50); ctx.lineTo(-16, -64); ctx.lineTo(0, -58); ctx.lineTo(16, -64); ctx.lineTo(10, -50); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ff4fd8'; ctx.strokeStyle = '#7a1060'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(-8, -52, 7, 4, -0.4, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(8, -52, 7, 4, 0.4, 0, 7); ctx.fill(); ctx.stroke();
-  // signo $
-  ctx.font = '900 26px Lilita One, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.lineWidth = 4; ctx.strokeStyle = '#5a3208'; ctx.strokeText('$', 0, -24); ctx.fillStyle = '#ffe27a'; ctx.fillText('$', 0, -24);
+  const gr = ctx.createRadialGradient(0, -40, 4, 0, -40, 75); gr.addColorStop(0, `rgba(255,220,110,${glow})`); gr.addColorStop(1, 'rgba(255,200,60,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, -40, 75, 0, 7); ctx.fill();
+  if (im) { const h = 86, w = im.width * h / im.height; ctx.drawImage(im, -w / 2, -h + 4 + bob, w, h); }
   ctx.restore();
 }
 

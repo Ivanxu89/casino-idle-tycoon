@@ -34,13 +34,12 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 #hud>*{pointer-events:auto}
 .hud-money{display:flex;align-items:center;gap:10px;background:linear-gradient(#ffe27a,#e89b12);
   color:#4a2300;border-radius:16px;padding:6px 16px 6px 8px;box-shadow:0 4px 0 #9a5a00,0 6px 16px #0008;min-width:190px}
-.coin-ico{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c0,#ffc21a 45%,#c97a00);
-  display:grid;place-items:center;font:28px 'Lilita One';color:#8a4b00;box-shadow:inset 0 -3px 0 #a86200}
+.coin-ico{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 2px #0006)}
 .big{font:26px/1 'Lilita One';letter-spacing:.5px}
 .small{font-weight:900;font-size:13px;color:#7a3c00}
 .hud-gems{display:flex;align-items:center;gap:8px;background:#2b1458;border:2px solid #7b4dff;border-radius:14px;padding:6px 14px;
   font:20px 'Lilita One'}
-.gem-ico{color:#ff6cf0;text-shadow:0 0 8px #ff4fd8;font-size:20px}
+.gem-ico{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 6px #ff4fd8)}
 .hud-room{font:22px 'Lilita One';color:#fff;text-shadow:0 0 10px var(--pink),0 2px 0 #000;margin-left:auto;margin-right:auto}
 .hud-btns{display:flex;gap:8px}
 .hbtn{display:flex;flex-direction:column;align-items:center;gap:2px;background:linear-gradient(#5b33b8,#3a1d72);

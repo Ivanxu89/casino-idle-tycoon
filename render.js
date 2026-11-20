@@ -2,101 +2,45 @@
 /* Carga de imágenes, personajes, dibujo isométrico, animaciones y clientes paseando. Dueño: Iván. */
 /* ----------------------------- IMÁGENES ------------------------------ */
 const IMG = {};
-const SPR = {}; // key `${type}_${tier}` -> canvas/img (con tono aplicado)
+const SPR = {}; // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
+const AVATARS = Object.keys(PLAYERS);
+const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag'];
+const SYM_IMGS = ['sym_7', 'sym_cherry', 'sym_bell', 'sym_bar', 'sym_diamond', 'sym_lemon', 'sym_star', 'sym_crown'];
 function loadImg(src) {
   return new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 }
 async function loadAssets() {
-  const jobs = [];
-  ROOMS.forEach((r, i) => jobs.push(loadImg(A('assets/' + r.img)).then(im => (IMG['room' + i] = im))));
-  for (const s of ['slot', 'blackjack', 'craps', 'poker'])
-    for (let t = 0; t < 4; t++) jobs.push(loadImg(A(`assets/${s}_${t}.webp`)).then(im => (IMG[`${s}_${t}`] = im)));
+  const jobs = [], get = (key, file) => jobs.push(loadImg(A('assets/' + file)).then(im => (IMG[key] = im)));
+  ROOMS.forEach((r, i) => get('room' + i, r.img));
+  const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
+  for (const s of sprites) for (let t = 0; t < 4; t++) get(`${s}_${t}`, `${s}_${t}.webp`);
+  for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
+  for (const pid of AVATARS) get('avatar_' + pid, `avatar_${pid}.webp`);
+  for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
-  for (const [id, T] of Object.entries(TYPES)) {
-    for (let t = 0; t < 4; t++) {
-      const src = IMG[`${T.sprite}_${t}`];
-      if (!src) continue;
-      if (!T.hue) { SPR[`${id}_${t}`] = src; continue; }
-      const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
-      const x = c.getContext('2d'); x.filter = `hue-rotate(${T.hue}deg) saturate(1.15)`; x.drawImage(src, 0, 0);
-      SPR[`${id}_${t}`] = c;
-    }
-  }
+  for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t < 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${t}`];
+  // iconos de moneda y gema del HUD
+  $('#hudCoin').src = A('assets/ui_coin.webp'); $('#hudGem').src = A('assets/ui_gem.webp');
 }
 
-/* ----------------------------- PERSONAJES (procedurales) ------------------------------ */
-const LOOK = {
-  student:   { skin: '#f1c7a0', hair: '#5a3a1e', top: '#6b7c93', pants: '#3b4a66', extra: 'cap', capC: '#ff4f5e', bag: true },
-  retiree:   { skin: '#eebd98', hair: '#d9d9d9', top: '#a08060', pants: '#5a4a3a', extra: 'glasses', cardigan: true },
-  office:    { skin: '#d9a47a', hair: '#2c1b10', top: '#ffffff', pants: '#2b3b5c', tie: '#2a62d8', jacket: '#3d4f73' },
-  tourist:   { skin: '#f4c39b', hair: '#c98a3a', top: '#ff8a3d', pants: '#e8d6a8', extra: 'sunhat', hawaii: true },
-  influencer:{ skin: '#c8875c', hair: '#ff6fd8', top: '#ff4fd8', pants: '#ffffff', phone: true, longHair: true },
-  business:  { skin: '#8d5a3b', hair: '#1a0f08', top: '#ffffff', pants: '#1d1d2e', jacket: '#7a1f3d', longHair: true, gold: true },
-  star:      { skin: '#f0c09a', hair: '#ffe08a', top: '#111111', pants: '#111111', jacket: '#d4af37', extra: 'shades', longHair: true, gold: true },
-  sheikh:    { skin: '#b9825a', hair: '#1a0f08', top: '#f5f5f5', pants: '#f5f5f5', extra: 'keffiyeh', robe: true, gold: true, beard: true },
-  tycoon:    { skin: '#f1c7a0', hair: '#888888', top: '#ffffff', pants: '#3a1d72', jacket: '#5b2ca0', extra: 'tophat', gold: true, monocle: true, beard: true },
-};
+/* ----------------------------- PERSONAJES (avatares de Magnific) ------------------------------ */
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
-// Dibuja a un cliente con los pies en (x,y) y altura h. cheer 0..1 = brazos arriba
-// walk = fase del paso (null si está quieto), flip = mira a la izquierda
+// Dibuja a un cliente con los pies en (x,y) y altura h. cheer 0..1 = salta de alegría,
+// walk = fase del paso (null si está quieto), flip = espejo (mira hacia la derecha).
 function drawPerson(ctx, x, y, h, pid, t = 0, cheer = 0, walk = null, flip = false) {
-  const L = LOOK[pid]; const s = h / 100;
-  ctx.save(); ctx.translate(x, y); ctx.scale(flip ? -s : s, s);
+  const im = IMG['avatar_' + pid]; if (!im) return;
+  const w = im.width * h / im.height;
   const ws = walk === null ? 0 : Math.sin(walk);
-  const bob = walk === null ? Math.sin(t * 3) * 1.2 - cheer * 4 : -Math.abs(ws) * 2.5;
-  // sombra
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 20, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.translate(0, bob);
-  ctx.lineJoin = 'round'; ctx.lineWidth = 2.2; ctx.strokeStyle = '#1b0b30';
-  // piernas / túnica
-  if (L.robe) {
-    ctx.fillStyle = L.top; rr(ctx, -15, -52, 30, 52, 6); ctx.fill(); ctx.stroke();
-  } else {
-    const l1 = Math.max(0, ws) * 5, l2 = Math.max(0, -ws) * 5, dx = ws * 3;
-    ctx.fillStyle = L.pants; rr(ctx, -12 + dx, -30 - l1, 10, 30, 3); ctx.fill(); ctx.stroke(); rr(ctx, 2 - dx, -30 - l2, 10, 30, 3); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#222'; rr(ctx, -13 + dx, -4 - l1, 12, 5, 2); ctx.fill(); rr(ctx, 1 - dx, -4 - l2, 12, 5, 2); ctx.fill();
-  }
-  // torso
-  ctx.fillStyle = L.top; rr(ctx, -16, -66, 32, 38, 8); ctx.fill(); ctx.stroke();
-  if (L.hawaii) { ctx.fillStyle = '#ffe14f'; for (const [a, b] of [[-8, -58], [6, -50], [-4, -40], [8, -62]]) { ctx.beginPath(); ctx.arc(a, b, 3, 0, 7); ctx.fill(); } }
-  if (L.cardigan) { ctx.fillStyle = '#7a5a3a'; ctx.fillRect(-2, -64, 4, 34); }
-  if (L.jacket) {
-    ctx.fillStyle = L.jacket; rr(ctx, -16, -66, 12, 38, 6); ctx.fill(); rr(ctx, 4, -66, 12, 38, 6); ctx.fill();
-  }
-  if (L.tie) { ctx.fillStyle = L.tie; ctx.beginPath(); ctx.moveTo(0, -64); ctx.lineTo(4, -46); ctx.lineTo(0, -40); ctx.lineTo(-4, -46); ctx.fill(); }
-  if (L.gold) { ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, -64, 9, 0.2, Math.PI - 0.2); ctx.stroke(); ctx.strokeStyle = '#1b0b30'; ctx.lineWidth = 2.2; }
-  if (L.bag) { ctx.fillStyle = '#2a62d8'; rr(ctx, -24, -64, 8, 26, 3); ctx.fill(); ctx.stroke(); }
-  // brazos
-  const aUp = cheer > 0.05;
-  for (const side of [-1, 1]) {
-    ctx.fillStyle = L.jacket || L.top;
-    ctx.save(); ctx.translate(side * 15, -62);
-    ctx.rotate(aUp ? side * (2.6 + Math.sin(t * 12) * 0.2) : side * 0.22 + ws * 0.4);
-    rr(ctx, -4.5, 0, 9, 27, 4.5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = L.skin; ctx.beginPath(); ctx.arc(0, 29, 4.8, 0, 7); ctx.fill(); ctx.stroke();
-    if (L.phone && side === 1 && !aUp) { ctx.fillStyle = '#111'; rr(ctx, -4, 27, 8, 13, 2); ctx.fill(); ctx.fillStyle = '#4fe3ff'; ctx.fillRect(-2.5, 29, 5, 9); }
-    ctx.restore();
-  }
-  // cabeza
-  const hy = -82;
-  if (L.longHair) { ctx.fillStyle = L.hair; rr(ctx, -16, hy - 12, 32, 30, 10); ctx.fill(); }
-  ctx.fillStyle = L.skin; ctx.beginPath(); ctx.arc(0, hy, 15, 0, 7); ctx.fill(); ctx.stroke();
-  if (L.beard) { ctx.fillStyle = L.hair; ctx.beginPath(); ctx.arc(0, hy + 4, 13, 0.15, Math.PI - 0.15); ctx.fill(); ctx.fillStyle = L.skin; ctx.beginPath(); ctx.ellipse(0, hy + 4, 8, 5, 0, 0, 7); ctx.fill(); }
-  // pelo
-  ctx.fillStyle = L.hair; ctx.beginPath(); ctx.arc(0, hy - 2, 15.5, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
-  // cara
-  ctx.fillStyle = '#1b0b30';
-  if (L.extra === 'shades') { rr(ctx, -12, hy - 3, 10, 6, 2); ctx.fill(); rr(ctx, 2, hy - 3, 10, 6, 2); ctx.fill(); ctx.fillRect(-3, hy - 2, 6, 2); }
-  else { ctx.beginPath(); ctx.arc(-5, hy, 2, 0, 7); ctx.arc(5, hy, 2, 0, 7); ctx.fill(); }
-  if (L.extra === 'glasses') { ctx.strokeStyle = '#1b0b30'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(-5, hy, 4.5, 0, 7); ctx.moveTo(9.5, hy); ctx.arc(5, hy, 4.5, 0, 7); ctx.stroke(); ctx.lineWidth = 2.2; }
-  if (L.monocle) { ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(5, hy, 5, 0, 7); ctx.stroke(); ctx.strokeStyle = '#1b0b30'; ctx.lineWidth = 2.2; }
-  ctx.strokeStyle = '#1b0b30'; ctx.lineWidth = 1.8; ctx.beginPath();
-  ctx.arc(0, hy + 5, cheer > 0.05 ? 5 : 4, 0.2, Math.PI - 0.2); ctx.stroke(); ctx.lineWidth = 2.2;
-  // sombreros
-  if (L.extra === 'cap') { ctx.fillStyle = L.capC; ctx.beginPath(); ctx.arc(0, hy - 6, 15, Math.PI, 0); ctx.fill(); ctx.stroke(); rr(ctx, 0, hy - 8, 20, 4, 2); ctx.fill(); }
-  if (L.extra === 'sunhat') { ctx.fillStyle = '#f3d98b'; ctx.beginPath(); ctx.ellipse(0, hy - 10, 24, 5, 0, 0, 7); ctx.fill(); ctx.stroke(); rr(ctx, -11, hy - 24, 22, 14, 6); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ff4f5e'; ctx.fillRect(-11, hy - 14, 22, 3); }
-  if (L.extra === 'tophat') { ctx.fillStyle = '#111'; ctx.beginPath(); ctx.ellipse(0, hy - 12, 20, 4.5, 0, 0, 7); ctx.fill(); rr(ctx, -12, hy - 38, 24, 26, 3); ctx.fill(); ctx.fillStyle = '#ffcf3f'; ctx.fillRect(-12, hy - 18, 24, 4); }
-  if (L.extra === 'keffiyeh') { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, hy - 2, 17.5, Math.PI * 0.95, Math.PI * 2.05); ctx.lineTo(18, hy + 18); ctx.lineTo(14, hy + 18); ctx.lineTo(14, hy); ctx.lineTo(-14, hy); ctx.lineTo(-14, hy + 18); ctx.lineTo(-18, hy + 18); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#111'; rr(ctx, -16, hy - 14, 32, 4, 2); ctx.fill(); }
+  const bob = walk === null ? Math.sin(t * 2.6) * h * 0.008 : -Math.abs(ws) * h * 0.03;
+  const jump = cheer > 0 ? Math.sin(cheer * Math.PI) * h * 0.14 : 0;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, w * 0.36 * (1 - jump / h), h * 0.05, 0, 0, 7); ctx.fill();
+  ctx.translate(x, y + bob - jump);
+  if (flip) ctx.scale(-1, 1);
+  if (walk !== null) ctx.rotate(ws * 0.05);
+  const sq = 1 + (walk === null && cheer <= 0 ? Math.sin(t * 2.6) * 0.012 : 0); // respira
+  ctx.scale(1 / sq, sq);
+  ctx.drawImage(im, -w / 2, -h, w, h);
   ctx.restore();
 }
 function portrait(pid, size = 110) {
@@ -104,7 +48,7 @@ function portrait(pid, size = 110) {
   const x = c.getContext('2d');
   const g = x.createRadialGradient(size / 2, size * 0.45, 4, size / 2, size / 2, size * 0.7);
   g.addColorStop(0, PLAYERS[pid].wc + '88'); g.addColorStop(1, '#1d0c4000'); x.fillStyle = g; x.fillRect(0, 0, size, size);
-  drawPerson(x, size / 2, size * 0.96, size * 0.82, pid, 0, 0);
+  drawPerson(x, size / 2, size * 0.97, size * 0.92, pid, 0, 0);
   return c;
 }
 
@@ -119,9 +63,10 @@ function resize() {
   const panelW = !narrow && !$('#panel').classList.contains('hidden') ? 360 : 0;
   $('#game').style.setProperty('--panel-w', panelW + 'px'); // la flecha derecha se aparta del panel
   const availH = h - (narrow ? 110 : 70), availW = w - panelW;
-  view.s = Math.min(availW / 1480, availH / 1180);
-  view.ox = availW / 2 - 768 * view.s;
-  view.oy = (narrow ? 110 : 70) + availH / 2 - 930 * view.s;
+  // encuadre: el suelo y las máquinas llenan la pantalla; las paredes del fondo quedan recortadas
+  view.s = Math.min(availW / 1380, availH / 1000);
+  view.ox = availW / 2 - 770 * view.s;
+  view.oy = (narrow ? 110 : 70) + availH / 2 - 960 * view.s;
 }
 const toRoom = (px, py) => [(px - view.ox) / view.s, (py - view.oy) / view.s];
 
@@ -132,46 +77,68 @@ let hover = -1, selected = -1, pickType = null, debug = false, time = 0;
 
 // geometría de máquina en coordenadas de sala
 function mGeom(i, m) {
-  const T = TYPES[m.type], img = SPR[`${m.type}_${tierOf(m.level)}`] || IMG.slot_0;
+  const T = TYPES[m.type], img = SPR[`${m.type}_${tierOf(m.level)}`];
   const [sx, sy] = SPOTS[i];
   const w = T.w, h = img ? img.height * (w / img.width) : w;
-  return { x: sx - w / 2, y: sy - h * T.ay, w, h, sx, sy, img };
+  // tragaperras: la base es un rombo isométrico cuyo centro queda a ~0.27·ancho del borde inferior → justo sobre el hueco
+  const y = T.cat === 'slot' ? sy - (h - w * 0.27) : sy - h * T.ay;
+  return { x: sx - w / 2, y, w, h, sx, sy, img };
 }
 
-// Rodillos animados: paralelogramo sobre la ventana del sprite (fracciones del sprite)
-const REEL = [ // por tier: TL, TR, BL
-  { tl: [0.29, 0.255], tr: [0.62, 0.30], bl: [0.27, 0.47] },
-  { tl: [0.30, 0.255], tr: [0.62, 0.30], bl: [0.28, 0.47] },
-  { tl: [0.30, 0.255], tr: [0.62, 0.30], bl: [0.28, 0.47] },
-  { tl: [0.30, 0.255], tr: [0.60, 0.30], bl: [0.28, 0.47] },
-];
-const SYMS = ['7', '🍒', 'BAR', '🔔', '💎', '🍋'];
-function drawReels(g, tier, a, prog) {
-  const R = REEL[tier];
-  const P = f => [g.x + f[0] * g.w, g.y + f[1] * g.h];
-  const tl = P(R.tl), tr = P(R.tr), bl = P(R.bl);
-  ctx.save();
-  ctx.transform((tr[0] - tl[0]) / 300, (tr[1] - tl[1]) / 300, (bl[0] - tl[0]) / 200, (bl[1] - tl[1]) / 200, tl[0], tl[1]);
-  ctx.globalAlpha = a;
-  for (let k = 0; k < 3; k++) {
-    const x0 = k * 100 + 4;
-    ctx.save(); rr(ctx, x0, 0, 92, 200, 14); ctx.clip();
-    const gr = ctx.createLinearGradient(0, 0, 0, 200); gr.addColorStop(0, '#bbb'); gr.addColorStop(.5, '#fff'); gr.addColorStop(1, '#bbb');
-    ctx.fillStyle = gr; ctx.fillRect(x0, 0, 92, 200);
-    const stopAt = 0.45 + k * 0.18, stopped = prog > stopAt;
-    const off = stopped ? 0 : (time * 1400 + k * 77) % 120;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (let j = -2; j < 3; j++) {
-      const yy = 100 + j * 120 + off;
-      const sym = stopped ? (j === 0 ? '7' : SYMS[(j + 6 + k) % SYMS.length]) : SYMS[(Math.floor((time * 1400 + k * 77) / 120) - j + 60 + k) % SYMS.length];
-      if (sym === '7') { ctx.font = '900 110px Lilita One, sans-serif'; ctx.fillStyle = '#e0141e'; ctx.fillText('7', x0 + 46, yy + 6); }
-      else if (sym === 'BAR') { ctx.font = '900 40px sans-serif'; ctx.fillStyle = '#111'; ctx.fillText('BAR', x0 + 46, yy); }
-      else { ctx.font = '70px sans-serif'; ctx.fillStyle = '#000'; ctx.fillText(sym, x0 + 46, yy); }
+// Rodillos animados: se dibujan en un lienzo aparte con el tamaño del sprite y se recortan con la
+// máscara exacta de la ventana de rodillos de esa máquina (assets/reelmask_*.webp), así encajan al píxel.
+// REEL_FIT (data.js) da el paralelogramo de la ventana para inclinar los símbolos con la perspectiva.
+const REEL_SYMS = {
+  lucky:    ['sym_7', 'sym_bar', 'sym_cherry', 'sym_bell', 'sym_star'],
+  emerald:  ['sym_cherry', 'sym_lemon', 'sym_bell', 'sym_7', 'sym_star'],
+  sapphire: ['sym_diamond', 'sym_7', 'sym_star', 'sym_bar'],
+  amethyst: ['sym_crown', 'sym_bell', 'sym_diamond', 'sym_7'],
+};
+const reelCv = document.createElement('canvas'), rctx = reelCv.getContext('2d');
+function reelLayer(type, tier, paint) {
+  const key = `${type}_${tier}`, mask = IMG['reelmask_' + key], R = REEL_FIT[key];
+  if (!mask || !R) return null;
+  const W = mask.width, H = mask.height;
+  if (reelCv.width !== W || reelCv.height !== H) { reelCv.width = W; reelCv.height = H; } else rctx.clearRect(0, 0, W, H);
+  paint(rctx, W, H, R);
+  rctx.globalCompositeOperation = 'destination-in'; rctx.drawImage(mask, 0, 0); rctx.globalCompositeOperation = 'source-over';
+  return reelCv;
+}
+function drawReels(g, type, tier, prog) {
+  const syms = REEL_SYMS[type] || REEL_SYMS.lucky;
+  const layer = reelLayer(type, tier, (c, W, H, R) => {
+    c.fillStyle = '#fbf3e0'; c.fillRect(0, 0, W, H);
+    const tl = [R.tl[0] * W, R.tl[1] * H], tr = [R.tr[0] * W, R.tr[1] * H], bl = [R.bl[0] * W, R.bl[1] * H];
+    c.save();
+    c.setTransform((tr[0] - tl[0]) / 300, (tr[1] - tl[1]) / 300, (bl[0] - tl[0]) / 200, (bl[1] - tl[1]) / 200, tl[0], tl[1]);
+    for (let k = 0; k < 3; k++) {
+      const x0 = k * 100, stopped = prog > 0.42 + k * 0.2, speed = 1500;
+      const off = stopped ? 0 : (time * speed + k * 61) % 110;
+      for (let j = -2; j <= 2; j++) {
+        const idx = stopped ? (j === 0 ? 0 : (j + 7 + k) % syms.length) : (Math.floor((time * speed + k * 61) / 110) - j + 50 + k) % syms.length;
+        const im = IMG[syms[idx]]; if (!im) continue;
+        const sz = 74, sh = stopped ? 1 : 1.35;                 // estirado = sensación de velocidad
+        const cy = 100 + j * 110 + off;
+        c.globalAlpha = stopped ? 1 : 0.9;
+        c.drawImage(im, x0 + 50 - sz / 2, cy - sz * sh / 2, sz, sz * sh);
+      }
+      c.globalAlpha = 1;
+      if (!stopped) { c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(x0, -20, 100, 240); }
+      c.fillStyle = 'rgba(60,20,10,.55)'; c.fillRect(x0 + 98, -20, 4, 240);   // separador entre rodillos
     }
-    if (!stopped) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x0, 0, 92, 200); }
-    ctx.restore();
-  }
-  ctx.restore();
+    // sombra curva del tambor arriba y abajo
+    const gr = c.createLinearGradient(0, -10, 0, 210);
+    gr.addColorStop(0, 'rgba(40,10,0,.55)'); gr.addColorStop(0.22, 'rgba(40,10,0,0)'); gr.addColorStop(0.78, 'rgba(40,10,0,0)'); gr.addColorStop(1, 'rgba(40,10,0,.55)');
+    c.fillStyle = gr; c.fillRect(-20, -20, 340, 240);
+    c.restore();
+  });
+  if (layer) ctx.drawImage(layer, g.x, g.y, g.w, g.h);
+}
+// destello dorado sobre los rodillos al cobrar
+function drawReelFlash(g, type, tier, a) {
+  const layer = reelLayer(type, tier, (c, W, H) => { c.fillStyle = '#fff3a0'; c.fillRect(0, 0, W, H); });
+  if (!layer) return;
+  ctx.save(); ctx.globalAlpha = a * 0.65; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(layer, g.x, g.y, g.w, g.h); ctx.restore();
 }
 
 function drawPlaque(x, y, txt, col = '#1d0c40', fg = '#fff', border = '#7b4dff') {
@@ -218,33 +185,31 @@ function drawMachine(r, i, m) {
       ctx.save(); ctx.globalAlpha = i === selected ? 0.7 : 0.4; ctx.fillStyle = i === selected ? '#ffcf3f' : '#4fe3ff';
       ctx.beginPath(); ctx.ellipse(sx, sy, T.w * 0.6, T.w * 0.33, 0, 0, 7); ctx.fill(); ctx.restore();
     }
+    // sombra de contacto con el suelo
+    ctx.save(); ctx.fillStyle = 'rgba(20,0,30,.35)'; ctx.beginPath(); ctx.ellipse(sx, sy + T.w * 0.04, T.w * 0.52, T.w * 0.26, 0, 0, 7); ctx.fill(); ctx.restore();
     // máquina con rebote
     const b = A.bounce > 0 ? Math.sin(A.bounce * Math.PI) * 0.06 : 0;
     ctx.save(); ctx.translate(sx, g.y + g.h); ctx.scale(1 + b * 0.5, 1 - b); ctx.translate(-sx, -(g.y + g.h));
     if (g.img) ctx.drawImage(g.img, g.x, g.y, g.w, g.h);
     if (T.cat === 'slot') {
-      // luz de la cúpula
-      const lx = g.x + g.w * 0.535, ly = g.y + g.h * 0.03;
-      const pulse = 0.35 + 0.3 * Math.sin(time * 4 + i) + A.flash * 0.8;
+      // halo de las bombillas de la marquesina (parpadea; más fuerte al cobrar)
+      const lx = g.x + g.w * 0.48, ly = g.y + g.h * 0.12;
+      const pulse = 0.16 + 0.12 * Math.sin(time * 5 + i) + A.flash * 0.6;
       if (tier > 0 || A.flash > 0) {
-        const gr = ctx.createRadialGradient(lx, ly, 2, lx, ly, 60); gr.addColorStop(0, `rgba(255,230,120,${pulse})`); gr.addColorStop(1, 'rgba(255,200,60,0)');
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(lx, ly, 60, 0, 7); ctx.fill();
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        const gr = ctx.createRadialGradient(lx, ly, 4, lx, ly, g.w * 0.45); gr.addColorStop(0, `rgba(255,220,120,${pulse})`); gr.addColorStop(1, 'rgba(255,200,60,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(lx, ly, g.w * 0.45, 0, 7); ctx.fill(); ctx.restore();
       }
-      if (A.spin > 0) drawReels(g, tier, 1, 1 - A.spin / 1.1);
-      else if (A.flash > 0) {
-        // brillo de premio en los rodillos
-        ctx.save(); ctx.globalAlpha = A.flash * 0.6; ctx.fillStyle = '#fff6a0'; ctx.globalCompositeOperation = 'lighter';
-        const R = REEL[tier], P = f => [g.x + f[0] * g.w, g.y + f[1] * g.h], a1 = P(R.tl), a2 = P(R.tr), a3 = P(R.bl);
-        ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.lineTo(a2[0] + a3[0] - a1[0], a2[1] + a3[1] - a1[1]); ctx.lineTo(a3[0], a3[1]); ctx.fill(); ctx.restore();
-      }
+      if (A.spin > 0) drawReels(g, m.type, tier, 1 - A.spin / 1.1);
+      else if (A.flash > 0) drawReelFlash(g, m.type, tier, A.flash);
     } else {
       drawTableAnim(m.type, g, A);
     }
     ctx.restore();
 
     // cliente
-    const px = T.cat === 'slot' ? sx - g.w * 0.42 : sx - g.w * 0.08, py = T.cat === 'slot' ? sy + 22 : sy + g.h * 0.30;
-    drawPerson(ctx, px, py, T.cat === 'slot' ? 100 : 92, m.player, time + i, A.cheer);
+    const px = T.cat === 'slot' ? sx - g.w * 0.5 : sx - g.w * 0.1, py = T.cat === 'slot' ? sy + g.w * 0.16 : sy + g.h * 0.32;
+    drawPerson(ctx, px, py, T.cat === 'slot' ? 165 : 155, m.player, time + i, A.cheer);
 }
 function drawLabels(r, i, m, now) {
     const T = TYPES[m.type], g = mGeom(i, m), sx = SPOTS[i][0];
@@ -272,10 +237,9 @@ function drawLabels(r, i, m, now) {
 function drawFX() {
   // partículas
   for (const p of FX.parts) {
-    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(Math.abs(Math.cos(p.rot)), 1);
-    ctx.fillStyle = '#ffcf3f'; ctx.strokeStyle = '#a86200'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, 11, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#a86200'; ctx.font = '900 14px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 1);
+    // moneda girando (arte de Magnific)
+    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(Math.max(0.15, Math.abs(Math.cos(p.rot))), 1);
+    if (IMG.ui_coin) ctx.drawImage(IMG.ui_coin, -16, -16, 32, 32);
     ctx.restore();
   }
   for (const f of FX.floats) {
@@ -399,14 +363,14 @@ function updateWalkers(dt) {
     if (d <= step) { w.u = tgt[0]; w.v = tgt[1]; w.path.shift(); }
     else { w.u += (du / d) * step; w.v += (dv / d) * step; }
     const [nx, ny] = floorPt(w.u, w.v);
-    if (Math.abs(nx - w.x) > 0.01) w.flip = nx < w.x;
+    if (Math.abs(nx - w.x) > 0.01) w.flip = nx > w.x; // el arte mira a la izquierda: espejo al ir a la derecha
     w.x = nx; w.y = ny; w.phase += dt * 9; w.moving = true;
   }
   WALK = WALK.filter(w => !w.dead);
 }
 function drawWalker(w) {
   ctx.save(); ctx.globalAlpha = Math.max(0, w.alpha);
-  drawPerson(ctx, w.x, w.y, 92, w.pid, time + w.phase, w.cheer, w.moving ? w.phase : null, w.flip);
+  drawPerson(ctx, w.x, w.y, 150, w.pid, time + w.phase, w.cheer, w.moving ? w.phase : null, w.flip);
   ctx.restore();
 }
 function drawWalkerBubble(w) {
