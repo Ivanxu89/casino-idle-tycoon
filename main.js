@@ -105,6 +105,7 @@ setInterval(save, 5000);
 
 (async function boot() {
   load();
+  giveTestBonus();
   await loadAssets();
   // ganancias offline (50% durante máx. 4h)
   const secs = Math.min((Date.now() - S.lastSave) / 1000, 4 * 3600);

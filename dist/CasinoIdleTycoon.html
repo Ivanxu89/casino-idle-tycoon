@@ -306,6 +306,7 @@ const PLAYERS = {
 
 const MILESTONES = [10, 25, 50, 100, 150, 200];
 const MAX_LEVEL = 200;
+const TEST_BONUS = 10000; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
 const SPOTS_PER_ROOM = 6;
 
 /* ------------- Suelo isométrico (coordenadas de la imagen 1536²) ------------- */
@@ -388,6 +389,10 @@ const maxLevel = () => allMachines().reduce((a, m) => Math.max(a, m.level), 0);
 const tierOf = L => (L >= 100 ? 3 : L >= 50 ? 2 : L >= 25 ? 1 : 0);
 const skipGems = secs => Math.max(1, Math.ceil(secs / 90));
 
+// PRUEBAS: regala TEST_BONUS monedas una vez por partida (también tras borrarla o vender el casino). TEST_BONUS = 0 lo desactiva.
+function giveTestBonus() {
+  if (TEST_BONUS > 0 && !S.testBonusGiven) { S.money += TEST_BONUS; S.testBonusGiven = true; save(); }
+}
 let earnHook = null; // lo usa slot-room.js para separar lo que producen tus máquinas mientras juegas a una slot
 function earn(v) { S.money += v; S.totalEarned += v; S.runEarned += v; if (earnHook) earnHook(v); }
 
@@ -422,6 +427,7 @@ function doPrestige() {
   prestigeArmUntil = 0;
   const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned };
   S = Object.assign(freshState(), keep);
+  giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);
   Snd.play('level');
   toast(`👑 ¡Casino vendido! Ahora tienes ${S.chips} fichas → ingresos x${prestigeMult().toFixed(1)}`);
@@ -1234,7 +1240,7 @@ function refreshModal() {
     $('#sReset').onclick = e => {
       if (!e.target.dataset.armed) { e.target.dataset.armed = '1'; e.target.textContent = '⚠️ ¿Seguro? Pulsa otra vez para borrar'; e.target.className = 'btn btn-red btn-sm'; return; }
       try { localStorage.removeItem(SAVE_KEY); } catch (err) {}
-      S = freshState(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
+      S = freshState(); giveTestBonus(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
     };
   } else if (modalKind === 'prestige') {
     $('#modalTitle').textContent = '👑 VENDER EL CASINO';
@@ -1519,6 +1525,7 @@ setInterval(save, 5000);
 
 (async function boot() {
   load();
+  giveTestBonus();
   await loadAssets();
   // ganancias offline (50% durante máx. 4h)
   const secs = Math.min((Date.now() - S.lastSave) / 1000, 4 * 3600);

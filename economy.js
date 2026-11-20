@@ -48,6 +48,10 @@ const maxLevel = () => allMachines().reduce((a, m) => Math.max(a, m.level), 0);
 const tierOf = L => (L >= 100 ? 3 : L >= 50 ? 2 : L >= 25 ? 1 : 0);
 const skipGems = secs => Math.max(1, Math.ceil(secs / 90));
 
+// PRUEBAS: regala TEST_BONUS monedas una vez por partida (también tras borrarla o vender el casino). TEST_BONUS = 0 lo desactiva.
+function giveTestBonus() {
+  if (TEST_BONUS > 0 && !S.testBonusGiven) { S.money += TEST_BONUS; S.testBonusGiven = true; save(); }
+}
 let earnHook = null; // lo usa slot-room.js para separar lo que producen tus máquinas mientras juegas a una slot
 function earn(v) { S.money += v; S.totalEarned += v; S.runEarned += v; if (earnHook) earnHook(v); }
 
@@ -82,6 +86,7 @@ function doPrestige() {
   prestigeArmUntil = 0;
   const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned };
   S = Object.assign(freshState(), keep);
+  giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);
   Snd.play('level');
   toast(`👑 ¡Casino vendido! Ahora tienes ${S.chips} fichas → ingresos x${prestigeMult().toFixed(1)}`);

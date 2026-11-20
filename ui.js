@@ -265,7 +265,7 @@ function refreshModal() {
     $('#sReset').onclick = e => {
       if (!e.target.dataset.armed) { e.target.dataset.armed = '1'; e.target.textContent = '⚠️ ¿Seguro? Pulsa otra vez para borrar'; e.target.className = 'btn btn-red btn-sm'; return; }
       try { localStorage.removeItem(SAVE_KEY); } catch (err) {}
-      S = freshState(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
+      S = freshState(); giveTestBonus(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
     };
   } else if (modalKind === 'prestige') {
     $('#modalTitle').textContent = '👑 VENDER EL CASINO';

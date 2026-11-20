@@ -39,6 +39,7 @@ const PLAYERS = {
 
 const MILESTONES = [10, 25, 50, 100, 150, 200];
 const MAX_LEVEL = 200;
+const TEST_BONUS = 10000; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
 const SPOTS_PER_ROOM = 6;
 
 /* ------------- Suelo isométrico (coordenadas de la imagen 1536²) ------------- */
