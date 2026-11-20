@@ -48,7 +48,8 @@ const maxLevel = () => allMachines().reduce((a, m) => Math.max(a, m.level), 0);
 const tierOf = L => (L >= 100 ? 3 : L >= 50 ? 2 : L >= 25 ? 1 : 0);
 const skipGems = secs => Math.max(1, Math.ceil(secs / 90));
 
-function earn(v) { S.money += v; S.totalEarned += v; S.runEarned += v; }
+let earnHook = null; // lo usa slot-room.js para separar lo que producen tus máquinas mientras juegas a una slot
+function earn(v) { S.money += v; S.totalEarned += v; S.runEarned += v; if (earnHook) earnHook(v); }
 
 /* ----------------------------- FORMATO ------------------------------ */
 const SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];

@@ -121,6 +121,7 @@ function renderPanel() {
     <div class="stat"><span>Ingresos</span><b>${money(cur)}/s</b></div>
     ${maxed ? '' : `<div class="stat"><span>Siguiente nivel</span><span class="up">${money(next)}/s (+${money(next - cur)})</span></div>`}
     <div class="stat"><span>Cliente</span><span>${P.name} <b>x${P.mult}</b></span></div>
+    ${T.cat === 'slot' ? '<div class="p-actions"><button class="btn btn-gold" id="bPlay"><span>🎰 Jugar en esta máquina</span><span style="font-size:12px">o doble clic</span></button></div>' : ''}
     <div class="sec-ttl">MEJORA</div>
     ${upg ? `
       <div class="stat"><span>Mejorando a Nv ${m.level + 1}…</span><b id="upLeft">${fmtTime((m.upEnd - Date.now()) / 1000)}</b></div>
@@ -146,6 +147,7 @@ function renderPanel() {
   }
   const bUp = $('#bUp'); if (bUp) bUp.onclick = () => doUpgrade(i);
   const bSkip = $('#bSkip'); if (bSkip) bSkip.onclick = () => skipUpgrade(i);
+  const bPlay = $('#bPlay'); if (bPlay) bPlay.onclick = () => enterSlot(i);
   panelSig = sigOf(m);
 }
 const sigOf = m => `${m.level}|${!!(m.upEnd && m.upEnd > Date.now())}|${m.player}`;
