@@ -18,10 +18,11 @@ function hitTest(px, py) {
   }
   return -1;
 }
-cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
+cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) || giftHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
 cv.addEventListener('mouseleave', () => (hover = -1));
 cv.addEventListener('click', e => {
   Snd.init();
+  if (!pickType && giftHit(e.offsetX, e.offsetY)) { openGift(); return; }
   const w = walkerHit(e.offsetX, e.offsetY);
   if (w && !pickType) { tapWalker(w); return; }
   const i = hitTest(e.offsetX, e.offsetY);
@@ -31,7 +32,8 @@ cv.addEventListener('click', e => {
   if (pickType) { placeMachine(pickType, i); return; }
   openBuild(i);
 });
-window.addEventListener('keydown', e => { if (e.key === 'd' && e.ctrlKey && e.shiftKey) debug = !debug; if (e.key === 'Escape') { closeModal(); closePanel(); cancelPick(); } });
+window.addEventListener('keydown', e => { if (e.key === 'd' && e.ctrlKey && e.shiftKey) debug = !debug; if (e.key === 'Escape') { closeModal(); closePanel(); cancelPick(); }
+  if (started && !modalKind && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) stepRoom(e.key === 'ArrowLeft' ? -1 : 1); });
 
 /* ----------------------------- ACCIONES ------------------------------ */
 function placeMachine(type, i) {
@@ -96,7 +98,35 @@ function goRoom(r) {
   S.room = r; selected = -1; FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
   if (!started) startGame();
   Snd.play('click');
+  updateRoomArrows();
 }
+
+// Flechas a los lados: sala anterior / siguiente. La siguiente cerrada muestra su precio y abre el modal de salas.
+function updateRoomArrows() {
+  const r = S.room, P = $('#roomPrev'), N = $('#roomNext');
+  const giftIn = k => !!(S.gift && S.gift.room === k);
+  P.classList.toggle('hidden', r === 0);
+  if (r > 0) {
+    P.querySelector('.ra-name').textContent = ROOMS[r - 1].name;
+    P.querySelector('.ra-gift').classList.toggle('hidden', !giftIn(r - 1));
+  }
+  N.classList.toggle('hidden', r === ROOMS.length - 1);
+  if (r < ROOMS.length - 1) {
+    const open = S.rooms[r + 1];
+    N.classList.toggle('locked', !open);
+    N.querySelector('.ra-name').textContent = open ? ROOMS[r + 1].name : '🔒 ' + money(ROOMS[r + 1].unlock);
+    N.querySelector('.ra-gift').classList.toggle('hidden', !giftIn(r + 1));
+  }
+}
+function stepRoom(d) {
+  const t = S.room + d;
+  if (t < 0 || t >= ROOMS.length) return;
+  if (!S.rooms[t]) { openModal('rooms'); return; }
+  goRoom(t);
+  cv.animate([{ opacity: 0.15, transform: `translateX(${d * 60}px)` }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
+}
+$('#roomPrev').onclick = () => stepRoom(-1);
+$('#roomNext').onclick = () => stepRoom(1);
 
 /* ----------------------------- UI: PANEL ------------------------------ */
 function closePanel() { selected = -1; $('#panel').classList.add('hidden'); resize(); }
@@ -333,4 +363,5 @@ function updateHUD() {
   const g = chipsToGain();
   $('#btnPrestige').classList.toggle('ready', g >= 1);
   $('#prestigeBadge').textContent = g >= 1 ? '+' + fmt(g) : '';
+  updateRoomArrows();
 }

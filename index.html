@@ -34,6 +34,10 @@
     <button id="goalBtn" class="btn btn-green btn-sm hidden">Reclamar <span id="goalGems"></span></button>
   </div>
 
+  <!-- Flechas para pasar de una sala a otra -->
+  <button id="roomPrev" class="room-arrow left hidden" title="Sala anterior (←)"><b>‹</b><span class="ra-name"></span><i class="ra-gift hidden" title="Hay un regalo en esta sala">🎁</i></button>
+  <button id="roomNext" class="room-arrow right hidden" title="Sala siguiente (→)"><b>›</b><span class="ra-name"></span><i class="ra-gift hidden" title="Hay un regalo en esta sala">🎁</i></button>
+
   <div id="pickHint" class="pick-hint hidden">Toca un hueco libre para colocar <b id="pickName"></b> <button id="pickCancel" class="btn btn-sm btn-red">Cancelar</button></div>
 
   <!-- Panel de máquina -->
@@ -92,5 +96,6 @@
 <script src="render.js"></script>
 <script src="ui.js"></script>
 <script src="slot-room.js"></script>
+<script src="gift.js"></script>
 <script src="online.js"></script>
 <script src="main.js"></script>

@@ -62,6 +62,22 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 .goal-ttl{font:13px 'Lilita One';color:var(--gold);letter-spacing:1px}
 .goal .btn{margin-top:6px}
 
+/* ---------- Flechas de sala ---------- */
+.room-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:8px 8px 10px;min-width:76px;border-radius:16px;background:linear-gradient(#6a3ad0,#3a1d72);border:2px solid #9c76ff;
+  box-shadow:0 4px 0 #1f0d45,0 8px 18px #0008;transition:opacity .3s,filter .1s}
+.room-arrow b{font:46px/.85 'Lilita One';text-shadow:0 0 10px var(--pink)}
+.room-arrow .ra-name{font-size:11px;font-weight:900;max-width:92px;text-align:center;line-height:1.15}
+.room-arrow.left{left:14px}
+.room-arrow.right{right:calc(14px + var(--panel-w,0px))}
+.room-arrow.locked{background:linear-gradient(#4a3a6a,#2a1d45);border-color:#6a5a8a;color:var(--muted)}
+.room-arrow.locked b{text-shadow:none}
+.room-arrow:hover{filter:brightness(1.18)}
+.room-arrow:active{transform:translateY(calc(-50% + 2px));box-shadow:0 2px 0 #1f0d45}
+.room-arrow:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.ra-gift{position:absolute;top:-12px;right:-10px;font-style:normal;font-size:22px;animation:pulse 1.2s infinite}
+body.in-slot .room-arrow{opacity:0;pointer-events:none}
+
 .pick-hint{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:#2b1458;border:2px solid var(--cyan);
   padding:10px 16px;border-radius:14px;font-weight:800;display:flex;gap:12px;align-items:center;box-shadow:0 0 20px #4fe3ff66}
 

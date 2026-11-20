@@ -117,6 +117,7 @@ function resize() {
   cv.width = w * view.dpr; cv.height = h * view.dpr;
   const narrow = w < 760;
   const panelW = !narrow && !$('#panel').classList.contains('hidden') ? 360 : 0;
+  $('#game').style.setProperty('--panel-w', panelW + 'px'); // la flecha derecha se aparta del panel
   const availH = h - (narrow ? 110 : 70), availW = w - panelW;
   view.s = Math.min(availW / 1480, availH / 1180);
   view.ox = availW / 2 - 768 * view.s;
@@ -202,9 +203,11 @@ function render() {
   const items = [];
   for (const i of order) { const m = S.machines[r][i]; if (m) items.push({ y: SPOTS[i][1], f: () => drawMachine(r, i, m) }); }
   for (const w of WALK) items.push({ y: w.y, f: () => drawWalker(w) });
+  if (giftHere()) items.push({ y: giftPos()[1], f: drawGift }); // las máquinas de delante pueden taparla: está escondida
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const i of order) { const m = S.machines[r][i]; if (m) drawLabels(r, i, m, now); }
   for (const w of WALK) drawWalkerBubble(w);
+  drawGiftSparkle(); drawGiftOpen(1 / 60);
   drawFX();
 }
 function drawMachine(r, i, m) {

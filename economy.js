@@ -13,6 +13,7 @@ function freshState() {
     sound: { music: 0.45, sfx: 0.8, muted: false },
     goal: 0,
     chips: 0, prestiges: 0, runEarned: 0,
+    gift: null, giftNext: 0, // regalo misterioso (gift.js)
     lastSave: Date.now(),
   };
 }
