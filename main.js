@@ -44,6 +44,7 @@ function tick(dt) {
     if (m.upEnd && now >= m.upEnd) finishUpgrade(r, i, m);
   }));
   for (const A of RT.values()) {
+    A.evolve = Math.max(0, (A.evolve || 0) - dt * 0.55);
     A.spin = Math.max(0, A.spin - dt); A.bounce = Math.max(0, A.bounce - dt * 3); A.flash = Math.max(0, A.flash - dt * 1.5);
     A.cheer = Math.max(0, A.cheer - dt * 1.2); A.dice = Math.max(0, A.dice - dt * 1.25); A.card = Math.max(0, A.card - dt * 1.25);
   }
@@ -64,7 +65,7 @@ function finishUpgrade(r, i, m) {
     FX.floats.push({ x: g.sx, y: g.y - 100, txt: ms ? `¡HITO! x2  +${2 + r}◆` : `¡Nivel ${m.level}!`, col: ms ? '#ff7ae5' : '#4fe3ff', size: ms ? 40 : 34, life: 1.6, vy: -50 });
     Snd.play(ms ? 'level' : 'upgrade');
   }
-  if (tierOf(m.level) !== tierOf(m.level - 1)) toast(`✨ ${TYPES[m.type].name} ha mejorado su aspecto`);
+  if (tierOf(m.level) !== tierOf(m.level - 1)) evolveMachine(r, i, m);
   if (selected === i && r === S.room) renderPanel();
 }
 
