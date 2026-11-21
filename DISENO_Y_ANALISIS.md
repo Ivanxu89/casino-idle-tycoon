@@ -21,7 +21,7 @@ La partida se guarda sola (localStorage) cada 5 s.
 | Clientes paseando | Entran por la puerta, recorren los pasillos entre máquinas, se paran y muestran emojis, y salen. Más máquinas = más clientes (máx. 8); las salas mejores atraen clientes más ricos. Los que llevan **$** dorado dan una propina (8 s de ingresos) al tocarlos |
 | Retención | Ganancias offline (50%, máx. 4 h, x2 con gemas), cadena de objetivos con recompensa |
 
-Los números de balance están todos al principio de `game.js` (`ROOMS`, `TYPES`, `PLAYERS`, `MILESTONES`, fórmulas de `upgradeCost` / `upgradeTime`).
+Los números de balance están en `data.js` (`ROOMS`, `TYPES`, `PLAYERS`, `MILESTONES`) y las fórmulas de `upgradeCost` / `upgradeTime` en `economy.js`.
 
 ## Análisis: qué funciona en los IDLE tycoon
 Referentes: AdVenture Capitalist, Idle Miner Tycoon, Egg, Inc., Cookie Clicker, Hotel Empire Tycoon, Idle Supermarket Tycoon, Eatventure.
