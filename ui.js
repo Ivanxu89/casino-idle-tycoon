@@ -18,10 +18,11 @@ function hitTest(px, py) {
   }
   return -1;
 }
-cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
+cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) || giftHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
 cv.addEventListener('mouseleave', () => (hover = -1));
 cv.addEventListener('click', e => {
   Snd.init();
+  if (!pickType && giftHit(e.offsetX, e.offsetY)) { openGift(); return; }
   const w = walkerHit(e.offsetX, e.offsetY);
   if (w && !pickType) { tapWalker(w); return; }
   const i = hitTest(e.offsetX, e.offsetY);
@@ -31,7 +32,8 @@ cv.addEventListener('click', e => {
   if (pickType) { placeMachine(pickType, i); return; }
   openBuild(i);
 });
-window.addEventListener('keydown', e => { if (e.key === 'd' && e.ctrlKey && e.shiftKey) debug = !debug; if (e.key === 'Escape') { closeModal(); closePanel(); cancelPick(); } });
+window.addEventListener('keydown', e => { if (e.key === 'd' && e.ctrlKey && e.shiftKey) debug = !debug; if (e.key === 'Escape') { closeModal(); closePanel(); cancelPick(); }
+  if (started && !modalKind && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) stepRoom(e.key === 'ArrowLeft' ? -1 : 1); });
 
 /* ----------------------------- ACCIONES ------------------------------ */
 function placeMachine(type, i) {
@@ -60,17 +62,23 @@ function skipUpgrade(i) {
   if (S.gems < g) { Snd.play('error'); toast('Te faltan gemas', true); return; }
   S.gems -= g; m.upEnd = Date.now(); renderPanel();
 }
+// Clientes limitados: cada contratación ocupa una máquina. Si no te queda ninguno libre de ese tipo,
+// tocarlo en el panel contrata uno nuevo (si te llega el dinero) y lo sienta en la máquina.
 function setPlayer(i, pid) {
   const m = S.machines[S.room][i];
-  if (!S.players[pid]) { openModal('shop', 'players'); return; }
+  if (m.player === pid) return;
+  if (playerFree(pid) <= 0 && !hirePlayer(pid)) return;
   m.player = pid; Snd.play('click'); renderPanel(); save();
 }
-function buyPlayer(pid) {
-  const P = PLAYERS[pid];
-  if (S.players[pid]) return;
-  if (S.money < P.cost) { Snd.play('error'); toast('Necesitas ' + money(P.cost), true); return; }
-  S.money -= P.cost; S.players[pid] = true; Snd.play('buy'); toast(`🎉 ${P.name} desbloqueado (x${P.mult})`); save(); refreshModal();
+function hirePlayer(pid) {
+  const P = PLAYERS[pid], c = hireCost(pid);
+  if (S.money < c) { Snd.play('error'); toast(`Contratar a ${P.name} cuesta ${money(c)}`, true); return false; }
+  const first = !S.players[pid];
+  S.money -= c; S.players[pid] = (S.players[pid] || 0) + 1; Snd.play('buy');
+  toast(first ? `🎉 ${P.name} contratado (x${P.mult})` : `🧑 Otro ${P.name} contratado · tienes ${S.players[pid]}`);
+  save(); refreshModal(); return true;
 }
+const buyPlayer = hirePlayer;
 function buyLicense(id) {
   const T = TYPES[id];
   if (S.licenses[id]) return;
@@ -96,7 +104,35 @@ function goRoom(r) {
   S.room = r; selected = -1; FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
   if (!started) startGame();
   Snd.play('click');
+  updateRoomArrows();
 }
+
+// Flechas a los lados: sala anterior / siguiente. La siguiente cerrada muestra su precio y abre el modal de salas.
+function updateRoomArrows() {
+  const r = S.room, P = $('#roomPrev'), N = $('#roomNext');
+  const giftIn = k => !!(S.gift && S.gift.room === k);
+  P.classList.toggle('hidden', r === 0);
+  if (r > 0) {
+    P.querySelector('.ra-name').textContent = ROOMS[r - 1].name;
+    P.querySelector('.ra-gift').classList.toggle('hidden', !giftIn(r - 1));
+  }
+  N.classList.toggle('hidden', r === ROOMS.length - 1);
+  if (r < ROOMS.length - 1) {
+    const open = S.rooms[r + 1];
+    N.classList.toggle('locked', !open);
+    N.querySelector('.ra-name').textContent = open ? ROOMS[r + 1].name : '🔒 ' + money(ROOMS[r + 1].unlock);
+    N.querySelector('.ra-gift').classList.toggle('hidden', !giftIn(r + 1));
+  }
+}
+function stepRoom(d) {
+  const t = S.room + d;
+  if (t < 0 || t >= ROOMS.length) return;
+  if (!S.rooms[t]) { openModal('rooms'); return; }
+  goRoom(t);
+  cv.animate([{ opacity: 0.15, transform: `translateX(${d * 60}px)` }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
+}
+$('#roomPrev').onclick = () => stepRoom(-1);
+$('#roomNext').onclick = () => stepRoom(1);
 
 /* ----------------------------- UI: PANEL ------------------------------ */
 function closePanel() { selected = -1; $('#panel').classList.add('hidden'); resize(); }
@@ -114,13 +150,14 @@ function renderPanel() {
   if ($('#panel').classList.contains('hidden')) { $('#panel').classList.remove('hidden'); resize(); }
   $('#panelBody').innerHTML = `
     <div class="p-head">
-      <img src="${A(`assets/${T.sprite}_${tier}.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg) drop-shadow(0 4px 6px #0008)` : ''}">
+      <img src="${A(`assets/${T.sprite}_${spriteTier(T, tier)}.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg) drop-shadow(0 4px 6px #0008)` : ''}">
       <div><div class="p-name">${T.name}</div><div class="p-lvl">NIVEL ${m.level}${maxed ? ' (MAX)' : ''}</div>
       <div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:4px">${T.cat === 'slot' ? 'Máquina' : 'Juego de mesa'} · ${ROOMS[r].name}</div></div>
     </div>
     <div class="stat"><span>Ingresos</span><b>${money(cur)}/s</b></div>
     ${maxed ? '' : `<div class="stat"><span>Siguiente nivel</span><span class="up">${money(next)}/s (+${money(next - cur)})</span></div>`}
     <div class="stat"><span>Cliente</span><span>${P.name} <b>x${P.mult}</b></span></div>
+    ${T.cat === 'slot' ? '<div class="p-actions"><button class="btn btn-gold" id="bPlay"><span>🎰 Jugar en esta máquina</span><span style="font-size:12px">o doble clic</span></button></div>' : ''}
     <div class="sec-ttl">MEJORA</div>
     ${upg ? `
       <div class="stat"><span>Mejorando a Nv ${m.level + 1}…</span><b id="upLeft">${fmtTime((m.upEnd - Date.now()) / 1000)}</b></div>
@@ -130,22 +167,25 @@ function renderPanel() {
       <div class="p-actions"><button class="btn btn-green" id="bUp" ${S.money < cost ? 'disabled' : ''}><span>Mejorar a Nv ${m.level + 1}</span><span>${money(cost)} · ⏱${fmtTime(dur)}</span></button></div>`}
     <div class="sec-ttl">HITOS (x2 ingresos)</div>
     <div class="milestones">${MILESTONES.map(x => `<span class="ms ${m.level >= x ? 'done' : ''}">Nv ${x}</span>`).join('')}</div>
-    ${nextMs ? `<div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:6px">Próximo hito: Nv ${nextMs} → ingresos x2 y +${2 + r}◆. Aspecto nuevo en Nv 25 / 50 / 100.</div>` : ''}
+    ${nextMs ? `<div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:6px">Próximo hito: Nv ${nextMs} → ingresos x2 y +${2 + r}◆. </div>` : ''}
+    ${nextVisualLevel(m.level) ? `<div class="stat"><span>✨ Mejora visual en Nv ${nextVisualLevel(m.level)}</span><img src="${A(`assets/${T.sprite}_${Math.min(tierOf(m.level) + 1, T.cat === 'slot' ? 4 : 3)}.webp`)}" style="height:46px"></div>` : '<div class="stat"><span>✨ Aspecto máximo conseguido</span></div>'}
     <div class="sec-ttl">ELIGE CLIENTE</div>
     <div class="pl-grid" id="plGrid"></div>
   `;
   const grid = $('#plGrid');
   for (const [pid, PP] of Object.entries(PLAYERS)) {
-    const own = S.players[pid];
+    const free = playerFree(pid), here = m.player === pid, can = here || free > 0;
     const d = document.createElement('div');
-    d.className = 'pl-card' + (m.player === pid ? ' sel' : '') + (own ? '' : ' locked');
+    d.className = 'pl-card' + (here ? ' sel' : '') + (can ? '' : ' locked');
     d.appendChild(portrait(pid, 90));
-    d.insertAdjacentHTML('beforeend', `<div>${PP.name}</div><div class="m">${own ? 'x' + PP.mult : money(PP.cost)}</div>${own ? '' : '<span class="lock">🔒</span>'}`);
+    const info = pid === 'student' ? 'x1 · ∞' : here ? `x${PP.mult} · aquí` : free > 0 ? `x${PP.mult} · ${free} libre${free > 1 ? 's' : ''}` : money(hireCost(pid));
+    d.insertAdjacentHTML('beforeend', `<div>${PP.name}</div><div class="m">${info}</div>${can ? '' : '<span class="lock">💰</span>'}`);
     d.onclick = () => setPlayer(i, pid);
     grid.appendChild(d);
   }
   const bUp = $('#bUp'); if (bUp) bUp.onclick = () => doUpgrade(i);
   const bSkip = $('#bSkip'); if (bSkip) bSkip.onclick = () => skipUpgrade(i);
+  const bPlay = $('#bPlay'); if (bPlay) bPlay.onclick = () => enterSlot(i);
   panelSig = sigOf(m);
 }
 const sigOf = m => `${m.level}|${!!(m.upEnd && m.upEnd > Date.now())}|${m.player}`;
@@ -187,18 +227,19 @@ function refreshModal() {
     const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
     if (modalTab === 'players') {
       for (const [pid, P] of Object.entries(PLAYERS)) {
-        const own = S.players[pid];
-        const c = document.createElement('div'); c.className = 'card' + (own ? ' owned' : ' locked');
+        const own = playerOwned(pid), used = playerUsed(pid), cost = hireCost(pid);
+        const c = document.createElement('div'); c.className = 'card' + (own > 0 ? ' owned' : ' locked');
         const im = document.createElement('div'); im.className = 'img'; im.appendChild(portrait(pid, 130)); c.appendChild(im);
         c.insertAdjacentHTML('beforeend', `
-          ${own ? '<span class="tag">DESBLOQUEADO</span>' : ''}
+          ${own > 0 ? `<span class="tag">${pid === 'student' ? 'GRATIS' : 'TIENES ' + own}</span>` : ''}
           <h3>${P.name}</h3>
           <span class="wealth" style="background:${P.wc};color:#12062a">${P.wealth}</span>
           <div class="d">${P.desc}</div>
-          <div class="kv"><span>Multiplicador</span><b>x${P.mult}</b></div>`);
+          <div class="kv"><span>Multiplicador</span><b>x${P.mult}</b></div>
+          <div class="kv"><span>En tus máquinas</span><b>${pid === 'student' ? used + ' (ilimitados)' : used + ' de ' + own}</b></div>`);
         const b = document.createElement('button');
-        b.className = 'btn ' + (own ? 'btn-dark' : 'btn-gold'); b.textContent = own ? 'Asignar desde una máquina' : 'Desbloquear ' + money(P.cost);
-        if (own) b.disabled = true; else { b.disabled = S.money < P.cost; b.onclick = () => buyPlayer(pid); }
+        if (pid === 'student') { b.className = 'btn btn-dark'; b.textContent = 'Siempre disponible'; b.disabled = true; }
+        else { b.className = 'btn btn-gold'; b.textContent = (own ? 'Contratar otro · ' : 'Contratar · ') + money(cost); b.disabled = S.money < cost; b.onclick = () => hirePlayer(pid); }
         c.appendChild(b); cards.appendChild(c);
       }
     } else {
@@ -263,7 +304,7 @@ function refreshModal() {
     $('#sReset').onclick = e => {
       if (!e.target.dataset.armed) { e.target.dataset.armed = '1'; e.target.textContent = '⚠️ ¿Seguro? Pulsa otra vez para borrar'; e.target.className = 'btn btn-red btn-sm'; return; }
       try { localStorage.removeItem(SAVE_KEY); } catch (err) {}
-      S = freshState(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
+      S = freshState(); giveTestBonus(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
     };
   } else if (modalKind === 'prestige') {
     $('#modalTitle').textContent = '👑 VENDER EL CASINO';
@@ -290,6 +331,8 @@ function refreshModal() {
         <div style="color:var(--muted)">Consejo: vende cuando tu progreso se frene; volverás mucho más rápido hasta donde estabas.</div>
       </div>`;
     $('#bPrest').onclick = doPrestige;
+  } else if (modalKind === 'missions') {
+    renderMissions(tabs, body);
   } else if (modalKind === 'offline') {
     $('#modalTitle').textContent = '¡BIENVENIDO DE NUEVO!';
     const { amt, secs } = offlineData;
@@ -331,4 +374,8 @@ function updateHUD() {
   const g = chipsToGain();
   $('#btnPrestige').classList.toggle('ready', g >= 1);
   $('#prestigeBadge').textContent = g >= 1 ? '+' + fmt(g) : '';
+  const pend = missionsPending();
+  $('#missionsBadge').textContent = pend ? pend : '';
+  $('#btnMissions').classList.toggle('ready', pend > 0);
+  updateRoomArrows();
 }

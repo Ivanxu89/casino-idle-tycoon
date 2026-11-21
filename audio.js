@@ -17,9 +17,12 @@ const Snd = {
   apply() {
     if (!this.ctx) return;
     this.master.gain.value = S.sound.muted ? 0 : 1;
-    this.music.gain.value = S.sound.music * 0.35;
+    this.music.gain.value = this.ducked ? 0 : S.sound.music * 0.35;
     this.sfx.gain.value = S.sound.sfx * 0.6;
   },
+  // silencia la música del casino mientras suena otra (p. ej. dentro de una slot)
+  ducked: false,
+  duck(on) { this.ducked = on; this.apply(); },
   tone(f, t0, dur, type = 'sine', vol = 0.3, dest = this.sfx, slide = 0) {
     const c = this.ctx, o = c.createOscillator(), g = c.createGain();
     o.type = type; o.frequency.setValueAtTime(f, t0);

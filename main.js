@@ -44,10 +44,12 @@ function tick(dt) {
     if (m.upEnd && now >= m.upEnd) finishUpgrade(r, i, m);
   }));
   for (const A of RT.values()) {
+    A.evolve = Math.max(0, (A.evolve || 0) - dt * 0.55);
     A.spin = Math.max(0, A.spin - dt); A.bounce = Math.max(0, A.bounce - dt * 3); A.flash = Math.max(0, A.flash - dt * 1.5);
     A.cheer = Math.max(0, A.cheer - dt * 1.2); A.dice = Math.max(0, A.dice - dt * 1.25); A.card = Math.max(0, A.card - dt * 1.25);
   }
   updateWalkers(dt);
+  updateGift();
   FX.floats = FX.floats.filter(f => (f.life -= dt) > 0); FX.floats.forEach(f => (f.y += f.vy * dt));
   FX.parts = FX.parts.filter(p => (p.life -= dt * 1.1) > 0);
   FX.parts.forEach(p => { p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 10; });
@@ -63,7 +65,7 @@ function finishUpgrade(r, i, m) {
     FX.floats.push({ x: g.sx, y: g.y - 100, txt: ms ? `¡HITO! x2  +${2 + r}◆` : `¡Nivel ${m.level}!`, col: ms ? '#ff7ae5' : '#4fe3ff', size: ms ? 40 : 34, life: 1.6, vy: -50 });
     Snd.play(ms ? 'level' : 'upgrade');
   }
-  if (tierOf(m.level) !== tierOf(m.level - 1)) toast(`✨ ${TYPES[m.type].name} ha mejorado su aspecto`);
+  if (tierOf(m.level) !== tierOf(m.level - 1)) evolveMachine(r, i, m);
   if (selected === i && r === S.room) renderPanel();
 }
 
@@ -91,6 +93,7 @@ function startGame() {
   $('#menu').classList.add('hidden');
   $('#hRoom').textContent = ROOMS[S.room].name;
   resize();
+  if (dailyState().can && !modalKind) openModal('missions', 'daily'); // recompensa diaria al entrar
 }
 function showMenu() {
   started = false; closePanel(); cancelPick();
@@ -105,6 +108,7 @@ setInterval(save, 5000);
 
 (async function boot() {
   load();
+  giveTestBonus();
   await loadAssets();
   // ganancias offline (50% durante máx. 4h)
   const secs = Math.min((Date.now() - S.lastSave) / 1000, 4 * 3600);
