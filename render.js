@@ -18,6 +18,7 @@ async function loadAssets() {
   for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
   for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
+  for (let k = 1; k <= GUARDS.length; k++) get('guard_' + k, `guard_${k}.webp`);
   for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
   for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t <= 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${spriteTier(T, t)}`];
@@ -247,6 +248,7 @@ function render() {
   const items = [];
   for (const i of order) { const m = S.machines[r][i]; if (m) items.push({ y: SPOTS[i][1], f: () => drawMachine(r, i, m) }); }
   for (const w of WALK) items.push({ y: w.y, f: () => drawWalker(w) });
+  items.push({ y: guardPos()[1], f: drawGuard });
   if (giftHere()) items.push({ y: giftPos()[1], f: drawGift }); // las máquinas de delante pueden taparla: está escondida
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const i of order) { const m = S.machines[r][i]; if (m) drawLabels(r, i, m, now); }
