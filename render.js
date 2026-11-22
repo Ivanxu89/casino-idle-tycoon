@@ -17,7 +17,7 @@ async function loadAssets() {
   const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
   for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
-  for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); }
+  for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
   for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
   for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t <= 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${spriteTier(T, t)}`];
@@ -29,9 +29,9 @@ async function loadAssets() {
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
 // Dibuja a un cliente con los pies en (x,y) y altura h. cheer 0..1 = salta de alegría,
 // walk = fase del paso (null si está quieto), flip = espejo (mira hacia la derecha).
-// Hoja de animación de Magnific: 8 fotogramas de 300x460, pies en y=448, reposo de 380 de alto.
+// Hoja de animación de Magnific: 8 fotogramas de 210x322, pies en y=313, reposo de 266 de alto.
 // 0-3 caminar · 4 reposo · 5 parpadeo · 6 celebrar · 7 saltar
-const ANIM = { cw: 300, ch: 460, base: 448, idleH: 380 };
+const ANIM = { cw: 210, ch: 322, base: 313, idleH: 266 }; // las hojas de reposo, espaldas y caminar comparten estas medidas
 function personFrame(t, cheer, walk) {
   if (cheer > 0) return cheer > 0.55 ? 7 : 6;
   if (walk !== null) return Math.floor((((walk % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * 4);
@@ -112,12 +112,16 @@ let hover = -1, selected = -1, pickType = null, debug = false, time = 0;
 
 // geometría de máquina en coordenadas de sala
 function mGeom(i, m) {
-  const T = TYPES[m.type], img = SPR[`${m.type}_${tierOf(m.level)}`];
+  const T = TYPES[m.type], tier = tierOf(m.level), img = SPR[`${m.type}_${tier}`];
   const [sx, sy] = SPOTS[i];
+  const F = T.cat === 'slot' && SPRITE_FIT[`${T.sprite}_${spriteTier(T, tier)}`];
+  if (F && img) {
+    // el mueble mide T.w de ancho; su esquina delantera queda ~0.22·T.w por debajo del centro del hueco
+    const w = T.w / F.f, h = img.height * (w / img.width);
+    return { x: sx - F.cx * w, y: sy + T.w * 0.22 - F.b * h, w, h, sx, sy, img };
+  }
   const w = T.w, h = img ? img.height * (w / img.width) : w;
-  // tragaperras: la base es un rombo isométrico cuyo centro queda a ~0.27·ancho del borde inferior → justo sobre el hueco
-  const y = T.cat === 'slot' ? sy - (h - w * 0.27) : sy - h * T.ay;
-  return { x: sx - w / 2, y, w, h, sx, sy, img };
+  return { x: sx - w / 2, y: sy - h * T.ay, w, h, sx, sy, img };
 }
 
 // Rodillos animados: se dibujan en un lienzo aparte con el tamaño del sprite y se recortan con la
@@ -128,6 +132,10 @@ const REEL_SYMS = {
   emerald:  ['sym_cherry', 'sym_lemon', 'sym_bell', 'sym_7', 'sym_star'],
   sapphire: ['sym_diamond', 'sym_7', 'sym_star', 'sym_bar'],
   amethyst: ['sym_crown', 'sym_bell', 'sym_diamond', 'sym_7'],
+  dragon:   ['sym_crown', 'sym_7', 'sym_star', 'sym_bell'],
+  pharaoh:  ['sym_diamond', 'sym_crown', 'sym_star', 'sym_bar'],
+  pirate:   ['sym_bell', 'sym_crown', 'sym_bar', 'sym_7'],
+  candy:    ['sym_cherry', 'sym_lemon', 'sym_star', 'sym_diamond'],
 };
 const reelCv = document.createElement('canvas'), rctx = reelCv.getContext('2d');
 function reelLayer(type, tier, paint) {
@@ -438,14 +446,23 @@ function updateWalkers(dt) {
     if (d <= step) { w.u = tgt[0]; w.v = tgt[1]; w.path.shift(); }
     else { w.u += (du / d) * step; w.v += (dv / d) * step; }
     const [nx, ny] = floorPt(w.u, w.v);
-    if (Math.abs(nx - w.x) > 0.01) w.flip = nx > w.x; // el arte mira a la izquierda: espejo al ir a la derecha
+    if (Math.abs(nx - w.x) > 0.01) w.flip = nx > w.x;
+    if (Math.abs(ny - w.y) > 0.01) w.back = ny < w.y; // se aleja (sube en pantalla) → de espaldas // el arte mira a la izquierda: espejo al ir a la derecha
     w.x = nx; w.y = ny; w.phase += dt * 9; w.moving = true;
   }
   WALK = WALK.filter(w => !w.dead);
 }
 function drawWalker(w) {
   ctx.save(); ctx.globalAlpha = Math.max(0, w.alpha);
-  drawPerson(ctx, w.x, w.y, 150, w.pid, time + w.phase, w.cheer, w.moving ? w.phase : null, w.flip);
+  const sheet = IMG['walk_' + w.pid];
+  if (w.moving && w.cheer <= 0 && sheet) {
+    // hoja de caminar: 0-3 de espaldas (hacia arriba-izquierda), 4-7 de frente (hacia abajo-izquierda); espejo si va a la derecha
+    const k = 150 / ANIM.idleH, step = Math.floor((((w.phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * 4);
+    const f = (w.back ? 0 : 4) + step;
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(w.x, w.y, 150 * 0.2, 150 * 0.05, 0, 0, 7); ctx.fill();
+    ctx.translate(w.x, w.y); if (w.flip) ctx.scale(-1, 1);
+    ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
+  } else drawPerson(ctx, w.x, w.y, 150, w.pid, time + w.phase, w.cheer, null, w.flip);
   ctx.restore();
 }
 function drawWalkerBubble(w) {
