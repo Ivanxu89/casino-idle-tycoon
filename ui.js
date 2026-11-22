@@ -18,11 +18,12 @@ function hitTest(px, py) {
   }
   return -1;
 }
-cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) || giftHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
+cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) || giftHit(e.offsetX, e.offsetY) || guardHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
 cv.addEventListener('mouseleave', () => (hover = -1));
 cv.addEventListener('click', e => {
   Snd.init();
   if (!pickType && giftHit(e.offsetX, e.offsetY)) { openGift(); return; }
+  if (!pickType && guardHit(e.offsetX, e.offsetY)) { openModal('security'); return; }
   const w = walkerHit(e.offsetX, e.offsetY);
   if (w && !pickType) { tapWalker(w); return; }
   const i = hitTest(e.offsetX, e.offsetY);
@@ -331,6 +332,8 @@ function refreshModal() {
         <div style="color:var(--muted)">Consejo: vende cuando tu progreso se frene; volverás mucho más rápido hasta donde estabas.</div>
       </div>`;
     $('#bPrest').onclick = doPrestige;
+  } else if (modalKind === 'security') {
+    renderSecurity(tabs, body);
   } else if (modalKind === 'missions') {
     renderMissions(tabs, body);
   } else if (modalKind === 'offline') {

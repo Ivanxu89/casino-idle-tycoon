@@ -49,7 +49,7 @@ function tick(dt) {
     A.cheer = Math.max(0, A.cheer - dt * 1.2); A.dice = Math.max(0, A.dice - dt * 1.25); A.card = Math.max(0, A.card - dt * 1.25);
   }
   updateWalkers(dt);
-  updateGift();
+  updateGift(); updateGuard(dt);
   FX.floats = FX.floats.filter(f => (f.life -= dt) > 0); FX.floats.forEach(f => (f.y += f.vy * dt));
   FX.parts = FX.parts.filter(p => (p.life -= dt * 1.1) > 0);
   FX.parts.forEach(p => { p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 10; });
