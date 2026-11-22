@@ -73,7 +73,21 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 .hbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #1f0d45}
 
 /* ---------- Goal ---------- */
-.goal{position:absolute;left:14px;top:84px;max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
+/* ---------- Potenciadores ---------- */
+.boosters{position:absolute;left:14px;top:84px;display:flex;gap:10px;z-index:4}
+.booster{position:relative;width:86px;padding:8px 4px 6px;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:linear-gradient(#4a3a6a,#2a1d45);border:2px solid #6a5a8a;color:var(--muted);box-shadow:0 4px 0 #1f0d45,0 8px 16px #0008;filter:saturate(.6)}
+.booster .bi{font-size:28px;line-height:1}
+.booster .bn{font:13px 'Lilita One';color:#fff}
+.booster .bt{font:900 12px 'Nunito';font-variant-numeric:tabular-nums}
+.booster.ready{background:linear-gradient(#5ff07a,#1f9a38);border-color:#b6ffc4;color:#06300f;filter:none;animation:pulse 1.6s infinite}
+.booster.speed.ready{background:linear-gradient(#5fd8ff,#2a62d8);border-color:#bfefff;color:#04233a}
+.booster.active{background:linear-gradient(#ffe27a,#e89b12);border-color:#fff3b0;color:#4a2300;filter:none;box-shadow:0 4px 0 #9a5a00,0 0 22px #ffcf3f}
+.booster:active{transform:translateY(2px)}
+body.speed-x2 #hIncome::after{content:' ⏩x2';color:#c4002a;font-weight:900}
+body.speed-x2 #cv{filter:saturate(1.15) brightness(1.05)}
+body.in-slot .boosters{opacity:0;pointer-events:none}
+.goal{position:absolute;left:14px;top:178px;max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
   border-radius:14px;padding:8px 12px;font-weight:800;font-size:14px;box-shadow:0 6px 18px #0007}
 .goal-ttl{font:13px 'Lilita One';color:var(--gold);letter-spacing:1px}
 .goal .btn{margin-top:6px}
