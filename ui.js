@@ -18,10 +18,11 @@ function hitTest(px, py) {
   }
   return -1;
 }
-cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) || giftHit(e.offsetX, e.offsetY) || guardHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
+cv.addEventListener('mousemove', e => { hover = hitTest(e.offsetX, e.offsetY); cv.style.cursor = hover >= 0 || walkerHit(e.offsetX, e.offsetY) || giftHit(e.offsetX, e.offsetY) || guardHit(e.offsetX, e.offsetY) || thiefHit(e.offsetX, e.offsetY) ? 'pointer' : 'default'; });
 cv.addEventListener('mouseleave', () => (hover = -1));
 cv.addEventListener('click', e => {
   Snd.init();
+  if (!pickType && thiefHit(e.offsetX, e.offsetY)) { caughtThief(true); return; }
   if (!pickType && giftHit(e.offsetX, e.offsetY)) { openGift(); return; }
   if (!pickType && guardHit(e.offsetX, e.offsetY)) { openModal('security'); return; }
   const w = walkerHit(e.offsetX, e.offsetY);
@@ -41,7 +42,7 @@ function placeMachine(type, i) {
   const r = S.room, c = placeCost(type, r);
   if (S.money < c) { Snd.play('error'); toast('No tienes suficientes monedas', true); return; }
   S.money -= c;
-  S.machines[r][i] = { type, level: 1, player: 'student', cycleT: 0, upEnd: 0, upDur: 0 };
+  S.machines[r][i] = { type, level: 1, player: FREE_PLAYER, cycleT: 0, upEnd: 0, upDur: 0 };
   Snd.play('buy');
   const A = rt(r, i); A.bounce = 1; A.flash = 1;
   cancelPick(); closeModal();
@@ -102,7 +103,7 @@ function unlockRoom(r) {
 }
 function goRoom(r) {
   if (!S.rooms[r]) return;
-  S.room = r; selected = -1; FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
+  S.room = r; selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
   if (!started) startGame();
   Snd.play('click');
   updateRoomArrows();
@@ -179,7 +180,7 @@ function renderPanel() {
     const d = document.createElement('div');
     d.className = 'pl-card' + (here ? ' sel' : '') + (can ? '' : ' locked');
     d.appendChild(portrait(pid, 90));
-    const info = pid === 'student' ? 'x1 · ∞' : here ? `x${PP.mult} · aquí` : free > 0 ? `x${PP.mult} · ${free} libre${free > 1 ? 's' : ''}` : money(hireCost(pid));
+    const info = pid === FREE_PLAYER ? 'x1 · ∞' : here ? `x${PP.mult} · aquí` : free > 0 ? `x${PP.mult} · ${free} libre${free > 1 ? 's' : ''}` : money(hireCost(pid));
     d.insertAdjacentHTML('beforeend', `<div>${PP.name}</div><div class="m">${info}</div>${can ? '' : '<span class="lock">💰</span>'}`);
     d.onclick = () => setPlayer(i, pid);
     grid.appendChild(d);
@@ -232,14 +233,14 @@ function refreshModal() {
         const c = document.createElement('div'); c.className = 'card' + (own > 0 ? ' owned' : ' locked');
         const im = document.createElement('div'); im.className = 'img'; im.appendChild(portrait(pid, 130)); c.appendChild(im);
         c.insertAdjacentHTML('beforeend', `
-          ${own > 0 ? `<span class="tag">${pid === 'student' ? 'GRATIS' : 'TIENES ' + own}</span>` : ''}
+          ${own > 0 ? `<span class="tag">${pid === FREE_PLAYER ? 'GRATIS' : 'TIENES ' + own}</span>` : ''}
           <h3>${P.name}</h3>
           <span class="wealth" style="background:${P.wc};color:#12062a">${P.wealth}</span>
           <div class="d">${P.desc}</div>
           <div class="kv"><span>Multiplicador</span><b>x${P.mult}</b></div>
-          <div class="kv"><span>En tus máquinas</span><b>${pid === 'student' ? used + ' (ilimitados)' : used + ' de ' + own}</b></div>`);
+          <div class="kv"><span>En tus máquinas</span><b>${pid === FREE_PLAYER ? used + ' (ilimitados)' : used + ' de ' + own}</b></div>`);
         const b = document.createElement('button');
-        if (pid === 'student') { b.className = 'btn btn-dark'; b.textContent = 'Siempre disponible'; b.disabled = true; }
+        if (pid === FREE_PLAYER) { b.className = 'btn btn-dark'; b.textContent = 'Siempre disponible'; b.disabled = true; }
         else { b.className = 'btn btn-gold'; b.textContent = (own ? 'Contratar otro · ' : 'Contratar · ') + money(cost); b.disabled = S.money < cost; b.onclick = () => hirePlayer(pid); }
         c.appendChild(b); cards.appendChild(c);
       }

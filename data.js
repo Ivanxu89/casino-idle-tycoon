@@ -29,16 +29,26 @@ const TYPES = {
   poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 2e7,   license: 7e7,   w: 290, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
 };
 
+// Escalera de 15 clientes, del más pobre al más rico. El Vagabundo es gratis e ilimitado (FREE_PLAYER);
+// el resto se contrata uno a uno y cada copia extra cuesta HIRE_GROWTH veces más.
+const FREE_PLAYER = 'beggar';
+const HIRE_GROWTH = 2.2;
 const PLAYERS = {
-  student:   { name: 'Estudiante',      mult: 1,   cost: 0,      wealth: 'Pobre',          wc: '#8a78c0', desc: 'Apuesta lo que le sobra de la beca.' },
-  retiree:   { name: 'Jubilado',        mult: 2,   cost: 300,    wealth: 'Modesto',        wc: '#9fb0c8', desc: 'Viene todos los martes con su pensión.' },
-  office:    { name: 'Oficinista',      mult: 4,   cost: 5000,   wealth: 'Clase media',    wc: '#5fb8ff', desc: 'Juega para olvidar los lunes.' },
-  tourist:   { name: 'Turista',         mult: 8,   cost: 9e4,    wealth: 'Acomodado',      wc: '#3ddc5a', desc: 'De vacaciones y con la cartera llena.' },
-  influencer:{ name: 'Influencer',      mult: 18,  cost: 2e6,    wealth: 'Rico',           wc: '#ff7ae5', desc: 'Lo graba todo… y apuesta fuerte.' },
-  business:  { name: 'Empresaria',      mult: 40,  cost: 6e7,    wealth: 'Muy rica',       wc: '#ffcf3f', desc: 'Cierra tratos y apuestas a lo grande.' },
-  star:      { name: 'Estrella de cine',mult: 90,  cost: 2.5e9,  wealth: 'Millonaria',     wc: '#ffa53f', desc: 'Gafas de sol incluso de noche.' },
-  sheikh:    { name: 'Jeque',           mult: 220, cost: 1.2e11, wealth: 'Multimillonario',wc: '#ff4f5e', desc: 'No pregunta el precio de nada.' },
-  tycoon:    { name: 'Magnate',         mult: 600, cost: 8e12,   wealth: 'Leyenda',        wc: '#ff4fd8', desc: 'Dueño de medio mundo. Tu mejor cliente.' },
+  beggar:    { name: 'Vagabundo',        mult: 1,    cost: 0,      wealth: 'Sin un duro',     wc: '#7a6a5a', desc: 'Apuesta las monedas que encuentra en la calle.' },
+  student:   { name: 'Estudiante',       mult: 1.5,  cost: 800,    wealth: 'Pobre',           wc: '#8a78c0', desc: 'Apuesta lo que le sobra de la beca.' },
+  retiree:   { name: 'Jubilado',         mult: 2.5,  cost: 2.5e4,  wealth: 'Modesto',         wc: '#9fb0c8', desc: 'Viene todos los martes con su pensión.' },
+  waitress:  { name: 'Camarera',         mult: 4,    cost: 6e5,    wealth: 'Humilde',         wc: '#c0a0e0', desc: 'Gasta aquí todas sus propinas.' },
+  office:    { name: 'Oficinista',       mult: 6,    cost: 1.5e7,  wealth: 'Clase media',     wc: '#5fb8ff', desc: 'Juega para olvidar los lunes.' },
+  tourist:   { name: 'Turista',          mult: 10,   cost: 4e8,    wealth: 'Acomodado',       wc: '#3ddc5a', desc: 'De vacaciones y con la cartera llena.' },
+  chef:      { name: 'Chef famoso',      mult: 16,   cost: 1.2e10, wealth: 'Con estrella',    wc: '#f0f0f0', desc: 'Tres estrellas y mucha hambre de premio.' },
+  influencer:{ name: 'Influencer',       mult: 25,   cost: 3.5e11, wealth: 'Rica',            wc: '#ff7ae5', desc: 'Lo graba todo… y apuesta fuerte.' },
+  surgeon:   { name: 'Cirujana',         mult: 40,   cost: 1e13,   wealth: 'Muy rica',        wc: '#3fd0c0', desc: 'Pulso firme hasta para la tragaperras.' },
+  business:  { name: 'Empresaria',       mult: 65,   cost: 3e14,   wealth: 'Millonaria',      wc: '#ffcf3f', desc: 'Cierra tratos y apuestas a lo grande.' },
+  star:      { name: 'Estrella de cine', mult: 100,  cost: 9e15,   wealth: 'Multimillonaria', wc: '#ffa53f', desc: 'Gafas de sol incluso de noche.' },
+  racer:     { name: 'Piloto de F1',     mult: 160,  cost: 2.5e17, wealth: 'Campeón',         wc: '#ff5040', desc: 'Apuesta a toda velocidad.' },
+  sheikh:    { name: 'Jeque',            mult: 250,  cost: 8e18,   wealth: 'Petrolero',       wc: '#ff4f5e', desc: 'No pregunta el precio de nada.' },
+  tycoon:    { name: 'Magnate',          mult: 400,  cost: 2.5e20, wealth: 'Leyenda',         wc: '#ff4fd8', desc: 'Dueño de medio mundo.' },
+  ultra:     { name: 'Ultra Mega Millonario', mult: 700, cost: 9e21, wealth: 'Incalculable', wc: '#ffe040', desc: 'Tiene un cohete de oro. Tu mejor cliente.' },
 };
 
 const MILESTONES = [10, 25, 50, 100, 150, 200];
@@ -47,11 +57,11 @@ const MAX_LEVEL = 200;
 /* ----------------------------- SEGURIDAD (security.js) ------------------------------ */
 // cost se multiplica por el coste de la sala; protect = probabilidad de parar a un ladrón (para los ladrones futuros)
 const GUARDS = [
-  { name: 'Paco el Despistado', protect: 0.15, cost: 300,   desc: 'Más pendiente del donut que de la puerta.' },
-  { name: 'Novato Nervioso',    protect: 0.35, cost: 2500,  desc: 'Se lo toma en serio, aunque tiembla un poco.' },
-  { name: 'Agente Pro',         protect: 0.55, cost: 25000, desc: 'En forma, con radio y buena vista.' },
-  { name: 'El Portero',         protect: 0.75, cost: 3e5,   desc: 'Nadie entra sin que él lo apruebe.' },
-  { name: 'Jefe de Élite',      protect: 0.92, cost: 5e6,   desc: 'Una mirada suya basta para echarte.' },
+  { name: 'Paco el Despistado', protect: 0.40, cost: 1000,  desc: 'Más pendiente del donut que de la puerta.' },
+  { name: 'Novato Nervioso',    protect: 0.55, cost: 1e5,   desc: 'Se lo toma en serio, aunque tiembla un poco.' },
+  { name: 'Agente Pro',         protect: 0.70, cost: 1e7,   desc: 'En forma, con radio y buena vista.' },
+  { name: 'El Portero',         protect: 0.85, cost: 1e9,   desc: 'Nadie entra sin que él lo apruebe.' },
+  { name: 'Jefe de Élite',      protect: 0.97, cost: 1e11,  desc: 'Una mirada suya basta para echarte.' },
 ];
 /* ----------------------------- VENTANAS DE RODILLOS ------------------------------ */
 // Paralelogramo de la ventana de rodillos de cada tragaperras y nivel (fracciones del sprite: esquinas
@@ -151,7 +161,7 @@ const MISSIONS = [
   { id: 'tables',  icon: '🃏', name: 'Mesas de juego',               goal: n => n === 1 ? 'Pon tu primera mesa de juego' : `Ten ${n} mesas de juego`,                  tiers: [1, 2, 4, 6, 10],                    val: () => countCat('table') },
   { id: 'level',   icon: '⬆️', name: 'Máquina estrella',             goal: n => `Sube una máquina a nivel ${n}`,             tiers: [5, 10, 25, 50, 100, 150, 200],      val: () => maxLevel() },
   { id: 'levels',  icon: '🔧', name: 'Mejoras sin parar',            goal: n => `Suma ${n} niveles entre todas tus máquinas`, tiers: [15, 40, 100, 250, 500, 1000],       val: () => allMachines().reduce((a, m) => a + m.level, 0) },
-  { id: 'players', icon: '🧑', name: 'Lista VIP',                    goal: n => `Desbloquea ${n} clientes`,                  tiers: [2, 3, 4, 5, 6, 7, 8, 9],            val: () => Object.keys(S.players).length },
+  { id: 'players', icon: '🧑', name: 'Lista VIP',                    goal: n => `Desbloquea ${n} clientes`,                  tiers: [2, 3, 4, 5, 6, 8, 10, 12, 15],            val: () => 1 + Object.keys(S.players).filter(k => k !== FREE_PLAYER && S.players[k] > 0).length },
   { id: 'rooms',   icon: '🏛️', name: 'Imperio del juego',            goal: n => `Abre ${n} salas`,                           tiers: [2, 3, 4, 5],                        val: () => S.rooms.filter(Boolean).length },
   { id: 'income',  icon: '💰', name: 'Lluvia de dinero',             goal: n => `Gana ${money(n)} por segundo`,              tiers: [50, 500, 5e3, 5e4, 5e5, 5e6, 5e7],  val: () => totalPS() },
   { id: 'gifts',   icon: '🎁', name: 'Cazador de regalos',           goal: n => n === 1 ? 'Abre tu primer regalo misterioso' : `Abre ${n} regalos misteriosos`,            tiers: [1, 5, 15, 40, 100],                 val: () => S.stats.gifts },
@@ -187,7 +197,7 @@ let SPOTS = SPOT_UV.map(([u, v]) => floorPt(u, v));
 const GOALS = [
   { t: 'Toca un hueco y coloca tu primera Lucky 7', ok: () => allMachines().length >= 1, g: 3 },
   { t: 'Mejora una máquina hasta el nivel 5', ok: () => maxLevel() >= 5, g: 3 },
-  { t: 'Desbloquea al Jubilado (Tienda → Jugadores) y asígnalo', ok: () => allMachines().some(m => m.player !== 'student'), g: 3 },
+  { t: 'Contrata a la Estudiante (Tienda → Jugadores) y siéntala', ok: () => allMachines().some(m => m.player !== FREE_PLAYER), g: 3 },
   { t: 'Ten 3 máquinas en el Salón Rubí', ok: () => countRoom(0) >= 3, g: 3 },
   { t: 'Alcanza el nivel 10 (hito x2)', ok: () => maxLevel() >= 10, g: 4 },
   { t: 'Compra la licencia Esmeralda 7', ok: () => !!S.licenses.emerald, g: 4 },

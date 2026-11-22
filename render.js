@@ -17,13 +17,14 @@ async function loadAssets() {
   const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
   for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
-  for (const pid of AVATARS) { get('avatar_' + pid, `avatar_${pid}.webp`); get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
+  for (const pid of AVATARS) { get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
   for (let k = 1; k <= GUARDS.length; k++) get('guard_' + k, `guard_${k}.webp`);
+  get('thief', 'thief.webp');
   for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
   for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t <= 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${spriteTier(T, t)}`];
   // iconos de moneda y gema del HUD
-  $('#hudCoin').src = A('assets/ui_coin.webp'); $('#hudGem').src = A('assets/ui_gem.webp');
+  $('#hudCoin').src = A('assets/ui_coin.webp'); $('#boostLvlIco').src = A('assets/boost_level.webp'); $('#boostSpeedIco').src = A('assets/boost_speed.webp'); $('#hudGem').src = A('assets/ui_gem.webp');
 }
 
 /* ----------------------------- PERSONAJES (avatares de Magnific) ------------------------------ */
@@ -34,9 +35,8 @@ function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect
 // 0-3 caminar · 4 reposo · 5 parpadeo · 6 celebrar · 7 saltar
 const ANIM = { cw: 210, ch: 322, base: 313, idleH: 266 }; // las hojas de reposo, espaldas y caminar comparten estas medidas
 function personFrame(t, cheer, walk) {
-  if (cheer > 0) return cheer > 0.55 ? 7 : 6;
-  if (walk !== null) return Math.floor((((walk % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * 4);
-  return (t % 3.7) < 0.14 ? 5 : 4;
+  if (cheer > 0) return cheer > 0.55 ? 3 : 2;
+  return (t % 3.7) < 0.14 ? 1 : 0;
 }
 function drawPerson(ctx, x, y, h, pid, t = 0, cheer = 0, walk = null, flip = false) {
   const sheet = IMG['anim_' + pid];
@@ -44,7 +44,7 @@ function drawPerson(ctx, x, y, h, pid, t = 0, cheer = 0, walk = null, flip = fal
   const k = h / ANIM.idleH, f = personFrame(t, cheer, walk);
   const bob = walk === null && cheer <= 0 ? Math.sin(t * 2.6) * h * 0.006 : 0;
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, h * 0.22 * (f === 7 ? 0.75 : 1), h * 0.05, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, h * 0.22 * (f === 3 ? 0.75 : 1), h * 0.05, 0, 0, 7); ctx.fill();
   ctx.translate(x, y + bob);
   if (flip) ctx.scale(-1, 1);
   ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
@@ -249,6 +249,7 @@ function render() {
   for (const i of order) { const m = S.machines[r][i]; if (m) items.push({ y: SPOTS[i][1], f: () => drawMachine(r, i, m) }); }
   for (const w of WALK) items.push({ y: w.y, f: () => drawWalker(w) });
   items.push({ y: guardPos()[1], f: drawGuard });
+  if (thief) items.push({ y: thief.y, f: drawThief });
   if (giftHere()) items.push({ y: giftPos()[1], f: drawGift }); // las máquinas de delante pueden taparla: está escondida
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const i of order) { const m = S.machines[r][i]; if (m) drawLabels(r, i, m, now); }
@@ -399,7 +400,7 @@ const PID_LIST = Object.keys(PLAYERS);
 let WALK = [];
 const walkerCap = () => Math.min(4, 1 + Math.floor(countRoom(S.room) / 2)); // la mitad que antes
 function spawnWalker() {
-  const lo = Math.min(S.room * 2, PID_LIST.length - 4); // salas mejores atraen clientes más ricos
+  const lo = Math.min(S.room * 3, PID_LIST.length - 4); // salas mejores atraen clientes más ricos
   const [x, y] = floorPt(DOOR[0], DOOR[1]);
   WALK.push({
     pid: PID_LIST[lo + Math.floor(Math.random() * 4)], u: DOOR[0], v: DOOR[1], x, y,
