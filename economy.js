@@ -14,6 +14,7 @@ function freshState() {
     goal: 0,
     chips: 0, prestiges: 0, runEarned: 0,
     gift: null, giftNext: 0, // regalo misterioso (gift.js)
+    boost: { lvlReady: 0, speedReady: 0, speedEnd: 0 }, // potenciadores: listos la primera vez (boosters.js)
     security: ROOMS.map(() => 0), // vigilante de cada sala, 0 = ninguno (security.js)
     missions: {}, daily: { last: null, streak: 0 }, stats: { gifts: 0, days: 0 }, // misiones y recompensa diaria (missions.js)
     lastSave: Date.now(),
@@ -30,6 +31,7 @@ function load() {
 // adapta partidas guardadas con versiones anteriores
 function migrate() {
   S.security = ROOMS.map((_, r) => (S.security && S.security[r]) || 0);
+  S.boost = Object.assign({ lvlReady: 0, speedReady: 0, speedEnd: 0 }, S.boost);
   // salas de 6 huecos → 9 huecos
   S.machines = ROOMS.map((_, r) => { const row = (S.machines[r] || []).slice(0, SPOTS_PER_ROOM); while (row.length < SPOTS_PER_ROOM) row.push(null); return row; });
   // clientes: antes «desbloqueado = true» y se podía poner en todas las máquinas; ahora cada uno es una contratación
@@ -109,7 +111,7 @@ function doPrestige() {
   if (Date.now() > prestigeArmUntil) { prestigeArmUntil = Date.now() + 4000; Snd.play('click'); refreshModal(); return; }
   prestigeArmUntil = 0;
   const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned,
-    missions: S.missions, daily: S.daily, stats: S.stats, security: S.security };
+    missions: S.missions, daily: S.daily, stats: S.stats, security: S.security, boost: S.boost };
   S = Object.assign(freshState(), keep);
   giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);
