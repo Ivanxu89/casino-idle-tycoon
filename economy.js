@@ -8,13 +8,14 @@ function freshState() {
     rooms: [true, false, false, false, false],
     room: 0,
     licenses: { lucky: true },
-    players: { student: 1 }, // cuántos clientes de cada tipo has contratado (el Estudiante es ilimitado)
+    players: {}, // cuántos clientes de cada tipo has contratado (el Estudiante es ilimitado)
     machines: ROOMS.map(() => Array(SPOTS_PER_ROOM).fill(null)),
     sound: { music: 0.45, sfx: 0.8, muted: false },
     goal: 0,
     chips: 0, prestiges: 0, runEarned: 0,
     gift: null, giftNext: 0, // regalo misterioso (gift.js)
-    boost: { lvlReady: 0, speedReady: 0, speedEnd: 0 }, // potenciadores: listos la primera vez (boosters.js)
+    boost: { lvlReady: 0, speedReady: 0, speedEnd: 0 },
+    thiefNext: 0, // próximo ladrón (thief.js) // potenciadores: listos la primera vez (boosters.js)
     security: ROOMS.map(() => 0), // vigilante de cada sala, 0 = ninguno (security.js)
     missions: {}, daily: { last: null, streak: 0 }, stats: { gifts: 0, days: 0 }, // misiones y recompensa diaria (missions.js)
     lastSave: Date.now(),
@@ -54,7 +55,8 @@ function incomePS(m, r, lvl = m.level) {
 const upgradeCost = (m, r) => TYPES[m.type].place * 0.5 * Math.pow(1.14, m.level - 1) * ROOMS[r].cost;
 const upgradeTime = (m, r) => (3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
 const countRoom = r => S.machines[r].filter(Boolean).length;
-const placeCost = (type, r) => TYPES[type].place * ROOMS[r].cost * Math.pow(1.45, countRoom(r));
+// cada máquina extra en la sala cuesta x1,6; a partir de la quinta, además x6 por cada una (muy difícil llenar la sala)
+const placeCost = (type, r) => { const n = countRoom(r); return TYPES[type].place * ROOMS[r].cost * Math.pow(1.6, n) * Math.pow(6, Math.max(0, n - 3)); };
 function totalPS() {
   let s = 0;
   S.machines.forEach((row, r) => row.forEach(m => { if (m) s += incomePS(m, r); }));
@@ -68,10 +70,10 @@ const tierOf = L => VISUAL_LEVELS.filter(x => L >= x).length;
 const nextVisualLevel = L => VISUAL_LEVELS.find(x => x > L);
 
 // clientes limitados: cada uno se contrata con dinero y ocupa una máquina
-const playerOwned = pid => (pid === 'student' ? Infinity : S.players[pid] || 0);
+const playerOwned = pid => (pid === FREE_PLAYER ? Infinity : S.players[pid] || 0);
 const playerUsed = pid => allMachines().filter(m => m.player === pid).length;
 const playerFree = pid => playerOwned(pid) - playerUsed(pid);
-const hireCost = pid => PLAYERS[pid].cost * Math.pow(1.6, S.players[pid] || 0);
+const hireCost = pid => PLAYERS[pid].cost * Math.pow(HIRE_GROWTH, S.players[pid] || 0);
 const skipGems = secs => Math.max(1, Math.ceil(secs / 90));
 
 // PRUEBAS: regala TEST_BONUS monedas una vez por partida (también tras borrarla o vender el casino). TEST_BONUS = 0 lo desactiva.

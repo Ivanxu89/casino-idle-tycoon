@@ -59,7 +59,7 @@ function guardPortrait(k, size) {
 function renderSecurity(tabs, body) {
   const r = S.room, cur = guardTier(r);
   $('#modalTitle').textContent = '🛡️ SEGURIDAD · ' + ROOMS[r].name.toUpperCase();
-  body.innerHTML = `<div class="daily-lead">${cur ? `Vigila la puerta: <b>${GUARDS[cur - 1].name}</b> · protección ${Math.round(GUARDS[cur - 1].protect * 100)}%` : 'Esta sala no tiene vigilante. Pronto llegarán ladrones…'}</div>`;
+  body.innerHTML = `<div class="daily-lead">${cur ? `Vigila la puerta: <b>${GUARDS[cur - 1].name}</b> · para al ${Math.round(GUARDS[cur - 1].protect * 100)}% de los ladrones` : 'Sin vigilante, cada ladrón se lleva una máquina (si no lo tocas a tiempo).'}</div>`;
   const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
   GUARDS.forEach((G, i) => {
     const k = i + 1, c = guardCost(k, r), own = k === cur, past = k < cur;
