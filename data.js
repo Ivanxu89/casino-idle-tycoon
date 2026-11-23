@@ -15,18 +15,19 @@ const ROOMS = [
 ];
 
 // cat: slot = "Máquinas", table = "Juegos"
+// place = colocar (×20 por escalón), license = licencia (×5 de colocar), upBase = lo que cuesta la primera mejora
 const TYPES = {
-  lucky:    { cat: 'slot',  name: 'Lucky 7',        sprite: 'slot_lucky', hue: 0,   base: 1,    cycle: 2.5, place: 10,    license: 0,     w: 200, ay: .80, desc: 'La clásica tragaperras de toda la vida.' },
-  emerald:  { cat: 'slot',  name: 'Esmeralda 7',    sprite: 'slot_emerald', hue: 0, base: 5,    cycle: 3,   place: 150,   license: 400,   w: 200, ay: .80, desc: 'Brilla en verde. Paga 5 veces más.' },
-  sapphire: { cat: 'slot',  name: 'Zafiro Deluxe',  sprite: 'slot_sapphire', hue: 0, base: 22,   cycle: 3.5, place: 1800,  license: 5000,  w: 200, ay: .80, desc: 'Tragaperras premium de luces azules.' },
-  amethyst: { cat: 'slot',  name: 'Amatista Royal', sprite: 'slot_amethyst', hue: 0, base: 90,   cycle: 4,   place: 1.5e4, license: 4e4,   w: 200, ay: .80, desc: 'La joya de las tragaperras.' },
-  dragon:   { cat: 'slot',  name: 'Fortuna del Dragón', sprite: 'slot_dragon', hue: 0, base: 180, cycle: 4.5, place: 4e4, license: 1e5, w: 200, ay: .80, desc: 'Lingotes, farolillos y un dragón dorado.' },
-  pharaoh:  { cat: 'slot',  name: 'Oro del Faraón',  sprite: 'slot_pharaoh', hue: 0, base: 700, cycle: 5, place: 4e5, license: 1.2e6, w: 200, ay: .80, desc: 'Escarabajos y el ojo de Horus.' },
-  pirate:   { cat: 'slot',  name: 'Tesoro Pirata',   sprite: 'slot_pirate', hue: 0, base: 3000, cycle: 5.5, place: 5e6, license: 1.5e7, w: 200, ay: .80, desc: 'Un cofre lleno de doblones.' },
-  candy:    { cat: 'slot',  name: 'Golosinas Neón',  sprite: 'slot_candy', hue: 0, base: 14000, cycle: 6, place: 6e7, license: 2e8, w: 200, ay: .80, desc: 'Dulce, brillante y muy rentable.' },
-  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 1.2e5, license: 4e5,   w: 280, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
-  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1.5e6, license: 5e6,   w: 280, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
-  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 2e7,   license: 7e7,   w: 290, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
+  lucky:    { cat: 'slot',  name: 'Lucky 7',        sprite: 'slot_lucky', hue: 0,   base: 1,    cycle: 2.5, place: 10,    license: 0, upBase: 5,     w: 200, ay: .80, desc: 'La clásica tragaperras de toda la vida.' },
+  emerald:  { cat: 'slot',  name: 'Esmeralda 7',    sprite: 'slot_emerald', hue: 0, base: 5,    cycle: 3,   place: 400,   license: 2000, upBase: 75,   w: 200, ay: .80, desc: 'Brilla en verde. Paga 5 veces más.' },
+  sapphire: { cat: 'slot',  name: 'Zafiro Deluxe',  sprite: 'slot_sapphire', hue: 0, base: 22,   cycle: 3.5, place: 16000,  license: 80000, upBase: 900,  w: 200, ay: .80, desc: 'Tragaperras premium de luces azules.' },
+  amethyst: { cat: 'slot',  name: 'Amatista Royal', sprite: 'slot_amethyst', hue: 0, base: 90,   cycle: 4,   place: 640000, license: 3.2e+06, upBase: 7500,   w: 200, ay: .80, desc: 'La joya de las tragaperras.' },
+  dragon:   { cat: 'slot',  name: 'Fortuna del Dragón', sprite: 'slot_dragon', hue: 0, base: 180, cycle: 4.5, place: 1.3e+07, license: 6.5e+07, upBase: 20000, w: 200, ay: .80, desc: 'Lingotes, farolillos y un dragón dorado.' },
+  pharaoh:  { cat: 'slot',  name: 'Oro del Faraón',  sprite: 'slot_pharaoh', hue: 0, base: 700, cycle: 5, place: 5e+09, license: 2.5e+10, upBase: 200000, w: 200, ay: .80, desc: 'Escarabajos y el ojo de Horus.' },
+  pirate:   { cat: 'slot',  name: 'Tesoro Pirata',   sprite: 'slot_pirate', hue: 0, base: 3000, cycle: 5.5, place: 2e+12, license: 1e+13, upBase: 2.5e+06, w: 200, ay: .80, desc: 'Un cofre lleno de doblones.' },
+  candy:    { cat: 'slot',  name: 'Golosinas Neón',  sprite: 'slot_candy', hue: 0, base: 14000, cycle: 6, place: 8e+14, license: 4e+15, upBase: 3e+07, w: 200, ay: .80, desc: 'Dulce, brillante y muy rentable.' },
+  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 2.6e+08, license: 1.3e+09, upBase: 60000,   w: 280, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
+  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1e+11, license: 5e+11, upBase: 750000,   w: 280, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
+  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 4e+13,   license: 2e+14, upBase: 1e+07,   w: 290, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
 };
 
 // Escalera de 15 clientes, del más pobre al más rico. El Vagabundo es gratis e ilimitado (FREE_PLAYER);
@@ -180,7 +181,7 @@ const DAILY = [
   { minutes: 7,  min: 800,  gems: 8 },
   { minutes: 15, min: 2000, gems: 20 },
 ];
-const TEST_BONUS = 10000; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
+const TEST_BONUS = 0; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
 const SPOTS_PER_ROOM = 9;
 
 /* ------------- Suelo isométrico (coordenadas de la imagen 1536²) ------------- */
