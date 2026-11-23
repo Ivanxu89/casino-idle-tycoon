@@ -84,8 +84,9 @@ const buyPlayer = hirePlayer;
 function buyLicense(id) {
   const T = TYPES[id];
   if (S.licenses[id]) return;
-  if (S.money < T.license) { Snd.play('error'); toast('Necesitas ' + money(T.license), true); return; }
-  S.money -= T.license; S.licenses[id] = true; Snd.play('buy'); toast(`🎰 Licencia de ${T.name} comprada`); save(); refreshModal();
+  const c = licenseCost(id);
+  if (S.money < c) { Snd.play('error'); toast('Necesitas ' + money(c), true); return; }
+  S.money -= c; S.licenses[id] = true; Snd.play('buy'); toast(`🎰 Licencia de ${T.name} comprada`); save(); refreshModal();
 }
 function choose(id) {
   closeModal();
@@ -98,8 +99,9 @@ function cancelPick() { pickType = null; $('#pickHint').classList.add('hidden');
 function unlockRoom(r) {
   if (S.rooms[r]) return;
   if (!S.rooms[r - 1]) { toast('Desbloquea primero la sala anterior', true); return; }
-  if (S.money < ROOMS[r].unlock) { Snd.play('error'); toast('Necesitas ' + money(ROOMS[r].unlock), true); return; }
-  S.money -= ROOMS[r].unlock; S.rooms[r] = true; S.gems += 5; Snd.play('level'); toast(`🏛️ ¡${ROOMS[r].name} abierta! +5◆`); save(); refreshModal();
+  const c = roomUnlockCost(r);
+  if (S.money < c) { Snd.play('error'); toast('Necesitas ' + money(c), true); return; }
+  S.money -= c; S.rooms[r] = true; S.gems += 5; Snd.play('level'); toast(`🏛️ ¡${ROOMS[r].name} abierta! +5◆`); save(); refreshModal();
 }
 function goRoom(r) {
   if (!S.rooms[r]) return;
@@ -122,7 +124,7 @@ function updateRoomArrows() {
   if (r < ROOMS.length - 1) {
     const open = S.rooms[r + 1];
     N.classList.toggle('locked', !open);
-    N.querySelector('.ra-name').textContent = open ? ROOMS[r + 1].name : '🔒 ' + money(ROOMS[r + 1].unlock);
+    N.querySelector('.ra-name').textContent = open ? ROOMS[r + 1].name : '🔒 ' + money(roomUnlockCost(r + 1));
     N.querySelector('.ra-gift').classList.toggle('hidden', !giftIn(r + 1));
   }
 }
@@ -257,7 +259,7 @@ function refreshModal() {
           <div class="kv"><span>Colocar (sala actual)</span><b>${money(placeCost(id, S.room))}</b></div>`;
         const b = document.createElement('button');
         if (own) { b.className = 'btn btn-green'; b.textContent = 'Elegir y colocar'; b.onclick = () => choose(id); }
-        else { b.className = 'btn btn-gold'; b.textContent = 'Licencia ' + money(T.license); b.disabled = S.money < T.license; b.onclick = () => buyLicense(id); }
+        else { b.className = 'btn btn-gold'; b.textContent = 'Licencia ' + money(licenseCost(id)); b.disabled = S.money < licenseCost(id); b.onclick = () => buyLicense(id); }
         c.appendChild(b); cards.appendChild(c);
       }
     }
@@ -271,7 +273,7 @@ function refreshModal() {
         <h3>${T.name}</h3><div class="kv"><span>Ingreso Nv1</span><b>${money(T.base * ROOMS[S.room].inc)}/s</b></div>`;
       const b = document.createElement('button');
       if (own) { b.className = 'btn btn-green'; b.textContent = 'Colocar ' + money(c); b.disabled = S.money < c; b.onclick = () => placeMachine(id, buildSpot); }
-      else { b.className = 'btn btn-dark'; b.textContent = '🔒 Licencia ' + money(T.license); b.onclick = () => { modalKind = 'shop'; modalTab = T.cat; refreshModal(); }; }
+      else { b.className = 'btn btn-dark'; b.textContent = '🔒 Licencia ' + money(licenseCost(id)); b.onclick = () => { modalKind = 'shop'; modalTab = T.cat; refreshModal(); }; }
       d.appendChild(b); cards.appendChild(d);
     }
   } else if (modalKind === 'rooms') {
@@ -289,7 +291,7 @@ function refreshModal() {
         <div class="kv"><span>Máquinas</span><b>${countRoom(r)}/${SPOTS_PER_ROOM}</b></div>`;
       const b = document.createElement('button');
       if (own) { b.className = 'btn btn-blue'; b.textContent = S.room === r ? 'Jugar aquí' : 'Ir a la sala'; b.onclick = () => goRoom(r); }
-      else { b.className = 'btn btn-gold'; b.textContent = 'Abrir ' + money(R.unlock); b.disabled = S.money < R.unlock || !S.rooms[r - 1]; b.onclick = () => unlockRoom(r); }
+      else { b.className = 'btn btn-gold'; b.textContent = 'Abrir ' + money(roomUnlockCost(r)); b.disabled = S.money < roomUnlockCost(r) || !S.rooms[r - 1]; b.onclick = () => unlockRoom(r); }
       c.appendChild(b); cards.appendChild(c);
     });
   } else if (modalKind === 'sound') {
@@ -319,16 +321,19 @@ function refreshModal() {
           <div class="stat"><span>Ganado en esta partida</span><b>${money(S.runEarned || 0)}</b></div>
           <div class="stat"><span>Siguiente ficha al ganar</span><b>${money(nextChipAt())}</b></div>
           <div class="stat"><span>Veces vendido</span><b>${S.prestiges || 0}</b></div>
+          <div class="stat"><span>Dificultad</span><b>${diffName()} · precios x${fmt(diff().price)}</b></div>
         </div>
         <div class="prest-col center">
           <div style="font-weight:800">Si vendes ahora recibes</div>
           <div class="offline-amt">+${fmt(g)} 👑</div>
           <div style="font-weight:800">Bonus tras vender: <b style="color:var(--green)">x${after.toFixed(1)}</b> en todas las máquinas</div>
+          <div style="font-weight:800;margin-top:6px">Dificultad tras vender: <b style="color:#ff7a85">${diffName(difficulty() + 1)}</b> · precios x${fmt(diff(difficulty() + 1).price)} y suben más rápido</div>
           <button class="btn btn-gold" id="bPrest" style="margin-top:14px;width:100%" ${g < 1 ? 'disabled' : ''}>${g < 1 ? 'Gana ' + money(1e6) + ' para vender' : Date.now() < prestigeArmUntil ? '⚠️ ¿Seguro? Pulsa otra vez' : 'Vender por ' + fmt(g) + ' fichas'}</button>
         </div>
       </div>
       <div class="prest-info">
         <div><b style="color:#ff7a85">Se pierde:</b> dinero, máquinas, salas, licencias y jugadores desbloqueados.</div>
+        <div><b style="color:#ff7a85">Sube la dificultad:</b> cada venta dobla todos los precios y hace que suban más deprisa al ampliar el casino.</div>
         <div><b style="color:var(--green)">Se conserva:</b> fichas 👑 (cada una +${CHIP_BONUS * 100}% ingresos para siempre), gemas ◆, objetivos y ajustes.</div>
         <div style="color:var(--muted)">Consejo: vende cuando tu progreso se frene; volverás mucho más rápido hasta donde estabas.</div>
       </div>`;

@@ -6,7 +6,7 @@
 const GUARD_UV = [0.07, 0.56]; // al lado de la puerta, sobre la pared izquierda
 const guardPos = () => floorPt(GUARD_UV[0], GUARD_UV[1]);
 const guardTier = (r = S.room) => S.security[r] || 0;            // 0 = sin vigilante, 1..5
-const guardCost = (k, r = S.room) => GUARDS[k - 1].cost * ROOMS[r].cost;
+const guardCost = (k, r = S.room) => GUARDS[k - 1].cost * ROOMS[r].cost * diff().price;
 const guardProtection = (r = S.room) => (guardTier(r) ? GUARDS[guardTier(r) - 1].protect : 0);
 let guardAlert = 0;
 // el vigilante en movimiento: post (en su puesto) · react (se da cuenta) · chase (persigue) · tackle (se lanza en plancha)
