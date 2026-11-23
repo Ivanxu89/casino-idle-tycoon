@@ -7,7 +7,10 @@ const SPR = {};
 const spriteTier = (T, t) => Math.min(t, T.cat === 'slot' ? 4 : 3); // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
 const AVATARS = Object.keys(PLAYERS);
 const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag'];
-const SYM_IMGS = ['sym_7', 'sym_cherry', 'sym_bell', 'sym_bar', 'sym_diamond', 'sym_lemon', 'sym_star', 'sym_crown'];
+const SYM_IMGS = ['sym_7', 'sym_cherry', 'sym_bell', 'sym_bar', 'sym_diamond', 'sym_lemon', 'sym_star', 'sym_crown',
+  // símbolos temáticos de cada tragaperras
+  'sym_orange', 'sym_watermelon', 'sym_ingot', 'sym_pearl', 'sym_lantern', 'sym_ccoin', 'sym_scarab', 'sym_eye', 'sym_ankh',
+  'sym_pyramid', 'sym_doubloons', 'sym_map', 'sym_skull', 'sym_anchor', 'sym_lollipop', 'sym_bonbon', 'sym_jellybean', 'sym_cupcake'];
 function loadImg(src) {
   return new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 }
@@ -128,15 +131,15 @@ function mGeom(i, m) {
 // Rodillos animados: se dibujan en un lienzo aparte con el tamaño del sprite y se recortan con la
 // máscara exacta de la ventana de rodillos de esa máquina (assets/reelmask_*.webp), así encajan al píxel.
 // REEL_FIT (data.js) da el paralelogramo de la ventana para inclinar los símbolos con la perspectiva.
-const REEL_SYMS = {
+const REEL_SYMS = {   // el primero es el que queda en el centro al parar (coincide con el dibujo de la máquina)
   lucky:    ['sym_7', 'sym_bar', 'sym_cherry', 'sym_bell', 'sym_star'],
-  emerald:  ['sym_cherry', 'sym_lemon', 'sym_bell', 'sym_7', 'sym_star'],
+  emerald:  ['sym_cherry', 'sym_orange', 'sym_watermelon', 'sym_lemon', 'sym_7'],
   sapphire: ['sym_diamond', 'sym_7', 'sym_star', 'sym_bar'],
-  amethyst: ['sym_crown', 'sym_bell', 'sym_diamond', 'sym_7'],
-  dragon:   ['sym_crown', 'sym_7', 'sym_star', 'sym_bell'],
-  pharaoh:  ['sym_diamond', 'sym_crown', 'sym_star', 'sym_bar'],
-  pirate:   ['sym_bell', 'sym_crown', 'sym_bar', 'sym_7'],
-  candy:    ['sym_cherry', 'sym_lemon', 'sym_star', 'sym_diamond'],
+  amethyst: ['sym_crown', 'sym_bell', 'sym_diamond', 'sym_star'],
+  dragon:   ['sym_ingot', 'sym_pearl', 'sym_lantern', 'sym_ccoin'],
+  pharaoh:  ['sym_scarab', 'sym_eye', 'sym_ankh', 'sym_pyramid'],
+  pirate:   ['sym_doubloons', 'sym_map', 'sym_skull', 'sym_anchor'],
+  candy:    ['sym_lollipop', 'sym_bonbon', 'sym_jellybean', 'sym_cupcake'],
 };
 const reelCv = document.createElement('canvas'), rctx = reelCv.getContext('2d');
 function reelLayer(type, tier, paint) {
@@ -172,17 +175,41 @@ function reelProfile(key) {
 // Lienzo plano de los rodillos (3 tambores de FW/3 de ancho) que luego se deforma sobre la ventana
 const FW = 300, FH = 220, FS = 2, flatCv = document.createElement('canvas'); flatCv.width = FW * FS; flatCv.height = FH * FS;
 const fctx = flatCv.getContext('2d');
-const REEL_STOP = [0.42, 0.62, 0.82];   // momento del ciclo en que para cada rodillo
-function paintFlatReels(syms, prog) {
+// Cada tragaperras gira a su manera: color del tambor, separadores, velocidad, cuándo para cada rodillo,
+// cómo rebota al parar y el color de la línea ganadora.
+//  stops: momento del ciclo (0-1) en que para cada rodillo · bounce: tamaño del rebote · win: color de la línea
+//  extra: 'sparkle' destellos · 'elastic' rebote de gominola · 'sway' vaivén de barco · 'rapid' frenazos seguidos · 'solemn' parada lenta
+const REEL_STYLE = {
+  lucky:    { bg: '#fbf3e0', sep: '#7a1a0e', edge: 'rgba(255,215,130,.5)', speed: 13, stops: [0.42, 0.62, 0.82], bounce: 0.22, win: '#ff3b3b' },
+  emerald:  { bg: '#f7f8e8', sep: '#1e5a1e', edge: 'rgba(170,255,140,.55)', speed: 12, stops: [0.40, 0.58, 0.76], bounce: 0.25, win: '#5dff6a' },
+  sapphire: { bg: '#eef4fb', sep: '#3c4b66', edge: 'rgba(210,235,255,.8)', speed: 15, stops: [0.45, 0.65, 0.85], bounce: 0.12, win: '#4fd2ff', extra: 'sparkle' },
+  amethyst: { bg: '#faf0fb', sep: '#5a1f6e', edge: 'rgba(255,190,255,.6)', speed: 14, stops: [0.42, 0.62, 0.82], bounce: 0.20, win: '#d36bff', extra: 'sparkle' },
+  dragon:   { bg: '#fff3dc', sep: '#8a1010', edge: 'rgba(255,210,80,.75)', speed: 19, stops: [0.52, 0.62, 0.72], bounce: 0.32, win: '#ffd23f', extra: 'rapid' },
+  pharaoh:  { bg: '#f3e2b8', sep: '#7a5a12', edge: 'rgba(255,225,120,.75)', speed: 10, stops: [0.32, 0.58, 0.84], bounce: 0.06, win: '#ffd700', extra: 'solemn' },
+  pirate:   { bg: '#efdcb5', sep: '#4e2c10', edge: 'rgba(230,180,100,.55)', speed: 12, stops: [0.42, 0.64, 0.86], bounce: 0.18, win: '#ffb13b', extra: 'sway' },
+  candy:    { bg: '#fff0f6', sep: '#c2477e', edge: 'rgba(255,255,255,.75)', speed: 14, stops: [0.38, 0.58, 0.78], bounce: 0.40, win: '#ff6bd0', extra: 'elastic' },
+};
+const rgbaHex = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+function paintFlatReels(syms, prog, st = REEL_STYLE.lucky) {
   const c = fctx; c.setTransform(FS, 0, 0, FS, 0, 0);
-  c.fillStyle = '#fbf3e0'; c.fillRect(0, 0, FW, FH);
+  c.fillStyle = st.bg; c.fillRect(0, 0, FW, FH);
   const R = FH / 2 / Math.sin(1.15), SZ = 92, STEP = 0.92;   // tambor: radio y ángulo entre símbolos
+  const lastStop = st.stops[2];
   for (let k = 0; k < 3; k++) {
-    const x0 = k * FW / 3, cx = x0 + FW / 6, stopAt = REEL_STOP[k], stopped = prog > stopAt;
-    // mientras gira: posición continua · al parar: pequeño rebote antes de quedarse quieto
+    const x0 = k * FW / 3, cx = x0 + FW / 6, stopAt = st.stops[k], stopped = prog > stopAt;
+    // mientras gira: posición continua · al parar: rebote propio de cada máquina
     let pos;
-    if (!stopped) pos = (time * 13 + k * 0.55) % 1000;
-    else { const e = Math.min(1, (prog - stopAt) / 0.07); pos = -Math.sin(e * Math.PI) * 0.22 * (1 - e); }
+    if (!stopped) {
+      let v = st.speed;
+      if (st.extra === 'solemn') v *= 0.55 + 0.45 * Math.min(1, (stopAt - prog) / 0.25);   // frena poco a poco
+      pos = (time * v + k * 0.55) % 1000;
+    } else {
+      const win = st.extra === 'elastic' ? 0.16 : st.extra === 'solemn' ? 0.12 : 0.07;
+      const e = Math.min(1, (prog - stopAt) / win);
+      pos = st.extra === 'elastic' ? -Math.sin(e * Math.PI * 2.5) * st.bounce * (1 - e)
+                                   : -Math.sin(e * Math.PI) * st.bounce * (1 - e);
+      if (st.extra === 'sway') pos += Math.sin(time * 2.2 + k * 1.3) * 0.035;            // vaivén de barco
+    }
     const base = Math.floor(pos), frac = pos - base;
     for (let j = -3; j <= 3; j++) {
       const th = (j + frac) * STEP;                      // ángulo de este símbolo en el tambor
@@ -199,14 +226,34 @@ function paintFlatReels(syms, prog) {
     c.globalAlpha = 1;
     // sombreado del cilindro: oscuro arriba y abajo, y en los laterales de cada tambor
     const gv = c.createLinearGradient(0, 0, 0, FH);
-    gv.addColorStop(0, 'rgba(45,12,0,.78)'); gv.addColorStop(0.2, 'rgba(45,12,0,.12)'); gv.addColorStop(0.5, 'rgba(255,255,255,.06)');
-    gv.addColorStop(0.8, 'rgba(45,12,0,.12)'); gv.addColorStop(1, 'rgba(45,12,0,.78)');
+    gv.addColorStop(0, 'rgba(45,12,0,.72)'); gv.addColorStop(0.2, 'rgba(45,12,0,.1)'); gv.addColorStop(0.5, 'rgba(255,255,255,.06)');
+    gv.addColorStop(0.8, 'rgba(45,12,0,.1)'); gv.addColorStop(1, 'rgba(45,12,0,.72)');
     c.fillStyle = gv; c.fillRect(x0, 0, FW / 3, FH);
     const gh2 = c.createLinearGradient(x0, 0, x0 + FW / 3, 0);
-    gh2.addColorStop(0, 'rgba(40,10,0,.38)'); gh2.addColorStop(0.18, 'rgba(40,10,0,0)'); gh2.addColorStop(0.82, 'rgba(40,10,0,0)'); gh2.addColorStop(1, 'rgba(40,10,0,.38)');
+    gh2.addColorStop(0, 'rgba(40,10,0,.34)'); gh2.addColorStop(0.18, 'rgba(40,10,0,0)'); gh2.addColorStop(0.82, 'rgba(40,10,0,0)'); gh2.addColorStop(1, 'rgba(40,10,0,.34)');
     c.fillStyle = gh2; c.fillRect(x0, 0, FW / 3, FH);
     if (!stopped) { c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x0, 0, FW / 3, FH); }
-    if (k) { c.fillStyle = 'rgba(50,15,5,.75)'; c.fillRect(x0 - 2, 0, 4, FH); c.fillStyle = 'rgba(255,215,130,.45)'; c.fillRect(x0 + 2, 0, 1.5, FH); }
+    // golpe de luz justo al parar este rodillo (en los «rapid» y «elastic» es más fuerte)
+    const hit = prog - stopAt;
+    if (hit > 0 && hit < 0.08) { c.fillStyle = rgbaHex(st.win, (0.08 - hit) / 0.08 * (st.extra === 'rapid' || st.extra === 'elastic' ? 0.45 : 0.25)); c.fillRect(x0, 0, FW / 3, FH); }
+    if (k) { c.fillStyle = st.sep; c.globalAlpha = 0.8; c.fillRect(x0 - 2, 0, 4, FH); c.globalAlpha = 1; c.fillStyle = st.edge; c.fillRect(x0 + 2, 0, 1.5, FH); }
+  }
+  // destellos sobre los símbolos parados (zafiro y amatista)
+  if (st.extra === 'sparkle') {
+    for (let k = 0; k < 3; k++) {
+      if (prog <= st.stops[k]) continue;
+      const ph = (time * 1.7 + k * 0.37) % 1, a = Math.sin(ph * Math.PI);
+      const sx = k * FW / 3 + FW / 6 + Math.sin(k * 7.1 + Math.floor(time * 1.7)) * 26, sy = FH / 2 + Math.cos(k * 3.3 + Math.floor(time * 1.7)) * 24, r = 5 + 9 * a;
+      c.save(); c.globalAlpha = a; c.fillStyle = '#fff'; c.translate(sx, sy); c.rotate(time);
+      c.beginPath(); for (let q = 0; q < 8; q++) { const rr = q % 2 ? r * 0.25 : r; c.lineTo(Math.cos(q * Math.PI / 4) * rr, Math.sin(q * Math.PI / 4) * rr); } c.fill(); c.restore();
+    }
+  }
+  // línea ganadora: aparece cuando paran los tres y late en el color de la máquina
+  const wl = prog - lastStop - 0.03;
+  if (wl > 0) {
+    const a = Math.min(1, wl / 0.05) * (0.55 + 0.35 * Math.sin(time * 14));
+    c.save(); c.globalAlpha = a; c.strokeStyle = st.win; c.lineWidth = 5; c.shadowColor = st.win; c.shadowBlur = 14;
+    c.beginPath(); c.moveTo(4, FH / 2); c.lineTo(FW - 4, FH / 2); c.stroke(); c.restore();
   }
   // reflejo del cristal: una franja diagonal suave
   const gl = c.createLinearGradient(0, 0, FW, FH);
@@ -216,7 +263,7 @@ function paintFlatReels(syms, prog) {
 }
 function drawReels(g, type, tier, prog) {
   const syms = REEL_SYMS[type] || REEL_SYMS.lucky, key = `${type}_${tier}`;
-  paintFlatReels(syms, prog);
+  paintFlatReels(syms, prog, REEL_STYLE[type]);
   const P = reelProfile(key);
   const layer = reelLayer(type, tier, (c, W, H, R) => {
     if (P) {
