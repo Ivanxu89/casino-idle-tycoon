@@ -18,8 +18,8 @@ async function loadAssets() {
   for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
   for (const pid of AVATARS) { get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
-  for (let k = 1; k <= GUARDS.length; k++) get('guard_' + k, `guard_${k}.webp`);
-  get('thief', 'thief.webp');
+  for (let k = 1; k <= GUARDS.length; k++) { get('guard_' + k, `guard_${k}.webp`); get('guardAct_' + k, `guard_${k}_act.webp`); get('guardBack_' + k, `guard_${k}_back.webp`); }
+  get('thief', 'thief.webp'); get('thiefAct', 'thief_act.webp'); get('thiefBack', 'thief_back.webp');
   for (const k of [...UI_IMGS, ...SYM_IMGS]) get(k, k + '.webp');
   await Promise.all(jobs);
   for (const [id, T] of Object.entries(TYPES)) for (let t = 0; t <= 4; t++) SPR[`${id}_${t}`] = IMG[`${T.sprite}_${spriteTier(T, t)}`];
@@ -251,6 +251,7 @@ function render() {
   items.push({ y: G.mode === 'post' ? guardPos()[1] : G.y, f: drawGuard });
   if (thief) items.push({ y: thief.y, f: drawThief });
   if (giftHere()) items.push({ y: giftPos()[1], f: drawGift }); // las máquinas de delante pueden taparla: está escondida
+  drawDust();
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const i of order) { const m = S.machines[r][i]; if (m) drawLabels(r, i, m, now); }
   for (const w of WALK) drawWalkerBubble(w);

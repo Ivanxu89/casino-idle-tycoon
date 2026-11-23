@@ -16,7 +16,8 @@ function updateThief(dt) {
   if (!S.thiefNext) S.thiefNext = Date.now() + thiefDelay();
   if (!thief && Date.now() >= S.thiefNext && !slotSess) spawnThief();
   if (!thief) return;
-  const T = thief; T.t += dt; T.phase += dt * 10;
+  const T = thief; T.t += dt; const p0 = T.phase; T.phase += dt * (T.state === 'out' ? 16 : 10); T.dodge = Math.max(0, (T.dodge || 0) - dt);
+  if (T.state === 'out' && Math.floor(p0 / 2.5) !== Math.floor(T.phase / 2.5)) dustPuff(T.x + (T.flip ? -14 : 14), T.y);
   if (T.state === 'in' || T.state === 'out') {
     const tgt = T.path[0];
     if (!tgt) { if (T.state === 'in') { T.state = 'grab'; T.t = 0; } else thief = null; return; }
@@ -30,7 +31,7 @@ function updateThief(dt) {
     if (T.state === 'in' && !S.machines[S.room][T.target]) thiefLeave(false);
   } else if (T.state === 'grab' && T.t >= THIEF_GRAB) {
     stealMachine();
-  } else if (T.state === 'caught' && T.t >= 1.2) {
+  } else if (T.state === 'caught' && T.t >= 2.2) {
     thiefLeave(false);
   }
 }
@@ -64,7 +65,7 @@ function caughtThief(byPlayer) {
   const L = thief.loot;
   if (L && !S.machines[S.room][L.i]) { S.machines[S.room][L.i] = L.m; S.stats.thefts = Math.max(0, (S.stats.thefts || 1) - 1); toast(`🎰 ¡Has recuperado la ${TYPES[L.m.type].name}!`); }
   thief.loot = null; thief.carry = false;
-  thief.state = 'caught'; thief.t = 0; guardAlert = 2;
+  thief.state = 'caught'; thief.t = 0; thief.byPlayer = byPlayer; guardAlert = 2;
   S.stats.caught = (S.stats.caught || 0) + 1;
   const bonus = Math.max(100, totalPS() * 120);
   earn(bonus);
@@ -88,23 +89,44 @@ function thiefHit(px, py) {
 }
 
 // Hoja de 16 fotogramas: 0-3 andar de frente · 4-7 andar de espaldas · 8 mirar · 9 frotarse las manos · 10 pillado · 11 huir · 12-15 huir con la máquina
+// Hoja de acción (ACT.cw de ancho): 0-3 huir asustado · 4 placado en el suelo · 5 esquivar · 6 esposado sentado · 7 forcejear
 function drawThief() {
-  const T = thief, sheet = IMG.thief; if (!T || !sheet) return;
+  const T = thief, sheet = IMG.thief, act = IMG.thiefAct; if (!T || !sheet) return;
   const step = Math.floor(T.phase / 2.5) % 4;
-  let f;
-  if (T.state === 'grab') f = T.t % 1.2 < 0.6 ? 9 : 8;
-  else if (T.state === 'caught') f = 10;
-  else if (T.state === 'out') f = T.carry ? 12 + step : 11;
-  else f = (T.back ? 4 : 0) + step;
-  const h = 150, k = h / ANIM.idleH;
+  let f, backImg = null, useAct = false, bob = 0, lift = 0, shake = 0, sx = 1, sy = 1;
+  if (T.state === 'grab') {
+    f = T.t % 1.2 < 0.6 ? 9 : 8;
+    sy = 1 - 0.04 * Math.abs(Math.sin(T.t * 9)); sx = 2 - sy;                  // se frota las manos, nervioso
+  } else if (T.state === 'caught') {
+    if (act) {
+      useAct = true;
+      if (!T.byPlayer && T.t < 0.9) { f = 4; shake = Math.sin(T.t * 50) * 3 * (1 - T.t / 0.9); }  // aplastado contra el suelo
+      else if (T.t < 1.3) { f = 7; shake = Math.sin(T.t * 40) * 4; }                              // forcejea
+      else { f = 6; sy = 1 - 0.03 * Math.sin(T.t * 3); }                                            // esposado, cabizbajo
+    } else f = 10;
+  } else if (T.dodge > 0 && act) {
+    useAct = true; f = 5; lift = Math.sin((1 - T.dodge / 0.6) * Math.PI) * 30;                      // salta de lado y esquiva
+  } else if (T.state === 'out') {
+    bob = -Math.abs(Math.sin(T.phase * Math.PI / 2.5)) * (T.carry ? 4 : 5);
+    if (T.back && IMG.thiefBack) { useAct = true; backImg = IMG.thiefBack; f = (T.carry ? 4 : 0) + step; }   // se aleja: de espaldas
+    else if (T.carry) f = 12 + step;
+    else if (act) { useAct = true; f = step; }
+    else f = 11;
+  } else { f = (T.back ? 4 : 0) + step; bob = -Math.abs(Math.sin(T.phase * Math.PI / 2.5)) * 2; }
+  const h = 150, k = h / ANIM.idleH, cw = useAct ? ACT.cw : ANIM.cw, img = backImg || (useAct ? act : sheet);
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(T.x, T.y, h * 0.2, h * 0.05, 0, 0, 7); ctx.fill();
-  ctx.translate(T.x, T.y); if (T.flip) ctx.scale(-1, 1);
-  ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(T.x, T.y, h * (useAct && !backImg && f === 4 ? 0.4 : 0.2), h * 0.05, 0, 0, 7); ctx.fill();
+  ctx.translate(T.x + shake, T.y + bob - lift); if (T.flip) ctx.scale(-1, 1);
+  ctx.scale(sx, sy);
+  ctx.drawImage(img, f * cw, 0, cw, ANIM.ch, -cw / 2 * k, -ANIM.base * k, cw * k, ANIM.ch * k);
   ctx.restore();
   if (T.state === 'grab') {                // aviso parpadeante sobre la cabeza
     const a = 0.6 + 0.4 * Math.sin(time * 12);
     ctx.save(); ctx.globalAlpha = a; ctx.font = '900 44px Lilita One, sans-serif'; ctx.textAlign = 'center';
     ctx.lineWidth = 6; ctx.strokeStyle = '#3a0000'; ctx.strokeText('!', T.x, T.y - 165); ctx.fillStyle = '#ff4f5e'; ctx.fillText('!', T.x, T.y - 165); ctx.restore();
+  }
+  if (T.state === 'out' && !T.carry) {    // gotas de sudor mientras huye con las manos vacías
+    ctx.save(); ctx.font = '18px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(time * 10);
+    ctx.fillText('💦', T.x + (T.flip ? -36 : 36), T.y - 140); ctx.restore();
   }
 }
