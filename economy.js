@@ -1,7 +1,7 @@
 'use strict';
 /* Estado y guardado, economía, formato de números y prestigio. Compartido. */
 /* ----------------------------- ESTADO ------------------------------ */
-const SAVE_KEY = 'casinoIdleTycoon_v1';
+const SAVE_KEY = 'casinoIdleTycoon_v2'; // v2: partida nueva desde cero (precios de máquinas nuevos)
 function freshState() {
   return {
     money: 25, gems: 10, totalEarned: 0,
@@ -52,7 +52,7 @@ function incomePS(m, r, lvl = m.level) {
   const t = TYPES[m.type];
   return t.base * lvl * milestoneMult(lvl) * ROOMS[r].inc * PLAYERS[m.player].mult * prestigeMult();
 }
-const upgradeCost = (m, r) => TYPES[m.type].place * 0.5 * Math.pow(1.14, m.level - 1) * ROOMS[r].cost;
+const upgradeCost = (m, r) => TYPES[m.type].upBase * Math.pow(1.14, m.level - 1) * ROOMS[r].cost;
 const upgradeTime = (m, r) => (3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
 const countRoom = r => S.machines[r].filter(Boolean).length;
 // cada máquina extra en la sala cuesta x1,6; a partir de la quinta, además x6 por cada una (muy difícil llenar la sala)
