@@ -33,7 +33,7 @@ const TYPES = {
 // Escalera de 15 clientes, del más pobre al más rico. El Vagabundo es gratis e ilimitado (FREE_PLAYER);
 // el resto se contrata uno a uno y cada copia extra cuesta HIRE_GROWTH veces más.
 const FREE_PLAYER = 'beggar';
-const HIRE_GROWTH = 2.2;
+const HIRE_GROWTH = 2.2;   // referencia; el valor real depende de la dificultad (diff().hire en economy.js)
 const PLAYERS = {
   beggar:    { name: 'Vagabundo',        mult: 1,    cost: 0,      wealth: 'Sin un duro',     wc: '#7a6a5a', desc: 'Apuesta las monedas que encuentra en la calle.' },
   student:   { name: 'Estudiante',       mult: 1.5,  cost: 800,    wealth: 'Pobre',           wc: '#8a78c0', desc: 'Apuesta lo que le sobra de la beca.' },

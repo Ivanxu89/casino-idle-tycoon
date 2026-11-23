@@ -52,11 +52,28 @@ function incomePS(m, r, lvl = m.level) {
   const t = TYPES[m.type];
   return t.base * lvl * milestoneMult(lvl) * ROOMS[r].inc * PLAYERS[m.player].mult * prestigeMult();
 }
-const upgradeCost = (m, r) => TYPES[m.type].upBase * Math.pow(1.14, m.level - 1) * ROOMS[r].cost;
+/* ----------------------------- DIFICULTAD ------------------------------ */
+// La primera partida es fácil: llenar la sala y mejorar sale barato. Cada vez que vendes el casino sube un
+// nivel de dificultad: todo cuesta el doble y los precios suben más deprisa con cada máquina, mejora o cliente.
+const difficulty = () => S.prestiges || 0;
+function diff(d = difficulty()) {
+  return {
+    price: Math.pow(2, d),                    // todo ×2 por cada venta
+    ramp:  Math.min(1.6, 1.25 + 0.07 * d),    // cada máquina extra en la sala
+    steep: Math.min(6, 1.4 + 0.9 * d),        // recargo extra a partir de la máquina «from»
+    from:  Math.max(3, 5 - d),
+    up:    Math.min(1.16, 1.10 + 0.012 * d),  // cada nivel de mejora
+    hire:  Math.min(2.6, 1.6 + 0.15 * d),     // cada copia de un mismo cliente
+  };
+}
+const diffName = (d = difficulty()) => ['Fácil', 'Normal', 'Difícil', 'Muy difícil', 'Experto', 'Pesadilla'][Math.min(d, 5)] + (d > 5 ? ' +' + (d - 5) : '');
+const upgradeCost = (m, r) => { const D = diff(); return TYPES[m.type].upBase * Math.pow(D.up, m.level - 1) * ROOMS[r].cost * D.price; };
+const licenseCost = id => TYPES[id].license * diff().price;
+const roomUnlockCost = r => ROOMS[r].unlock * diff().price;
 const upgradeTime = (m, r) => (3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
 const countRoom = r => S.machines[r].filter(Boolean).length;
-// cada máquina extra en la sala cuesta x1,6; a partir de la quinta, además x6 por cada una (muy difícil llenar la sala)
-const placeCost = (type, r) => { const n = countRoom(r); return TYPES[type].place * ROOMS[r].cost * Math.pow(1.6, n) * Math.pow(6, Math.max(0, n - 3)); };
+// cada máquina extra en la sala sube el precio (D.ramp) y, a partir de la D.from-ésima, además D.steep por cada una
+const placeCost = (type, r) => { const n = countRoom(r), D = diff(); return TYPES[type].place * ROOMS[r].cost * D.price * Math.pow(D.ramp, n) * Math.pow(D.steep, Math.max(0, n - D.from)); };
 function totalPS() {
   let s = 0;
   S.machines.forEach((row, r) => row.forEach(m => { if (m) s += incomePS(m, r); }));
@@ -73,7 +90,7 @@ const nextVisualLevel = L => VISUAL_LEVELS.find(x => x > L);
 const playerOwned = pid => (pid === FREE_PLAYER ? Infinity : S.players[pid] || 0);
 const playerUsed = pid => allMachines().filter(m => m.player === pid).length;
 const playerFree = pid => playerOwned(pid) - playerUsed(pid);
-const hireCost = pid => PLAYERS[pid].cost * Math.pow(HIRE_GROWTH, S.players[pid] || 0);
+const hireCost = pid => { const D = diff(); return PLAYERS[pid].cost * D.price * Math.pow(D.hire, S.players[pid] || 0); };
 const skipGems = secs => Math.max(1, Math.ceil(secs / 90));
 
 // PRUEBAS: regala TEST_BONUS monedas una vez por partida (también tras borrarla o vender el casino). TEST_BONUS = 0 lo desactiva.
@@ -118,6 +135,6 @@ function doPrestige() {
   giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);
   Snd.play('level');
-  toast(`👑 ¡Casino vendido! Ahora tienes ${S.chips} fichas → ingresos x${prestigeMult().toFixed(1)}`);
+  toast(`👑 ¡Casino vendido! Ingresos x${prestigeMult().toFixed(1)} · Dificultad: ${diffName()} (precios x${fmt(diff().price)})`);
   save();
 }
