@@ -409,6 +409,15 @@ const MAX_LEVEL = 200;
 
 /* ----------------------------- SEGURIDAD (security.js) ------------------------------ */
 // cost se multiplica por el coste de la sala; protect = probabilidad de parar a un ladrón (para los ladrones futuros)
+// react = segundos hasta salir corriendo · speed = velocidad (el ladrón va a 0,16 y huye a 0,32)
+// tackle = probabilidad de placarlo al alcanzarlo · stun = segundos aturdido si falla
+const GUARD_CHASE = [
+  { react: 2.5, speed: 0.09, tackle: 0.30, stun: 2.6 },
+  { react: 2.0, speed: 0.12, tackle: 0.38, stun: 2.4 },
+  { react: 1.5, speed: 0.16, tackle: 0.45, stun: 2.0 },
+  { react: 0.9, speed: 0.22, tackle: 0.62, stun: 1.4 },
+  { react: 0.3, speed: 0.34, tackle: 0.90, stun: 0.6 },
+];
 const GUARDS = [
   { name: 'Paco el Despistado', protect: 0.40, cost: 1000,  desc: 'Más pendiente del donut que de la puerta.' },
   { name: 'Novato Nervioso',    protect: 0.55, cost: 1e5,   desc: 'Se lo toma en serio, aunque tiembla un poco.' },
@@ -1028,7 +1037,7 @@ function render() {
   const items = [];
   for (const i of order) { const m = S.machines[r][i]; if (m) items.push({ y: SPOTS[i][1], f: () => drawMachine(r, i, m) }); }
   for (const w of WALK) items.push({ y: w.y, f: () => drawWalker(w) });
-  items.push({ y: guardPos()[1], f: drawGuard });
+  items.push({ y: G.mode === 'post' ? guardPos()[1] : G.y, f: drawGuard });
   if (thief) items.push({ y: thief.y, f: drawThief });
   if (giftHere()) items.push({ y: giftPos()[1], f: drawGift }); // las máquinas de delante pueden taparla: está escondida
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
@@ -1397,7 +1406,7 @@ function unlockRoom(r) {
 }
 function goRoom(r) {
   if (!S.rooms[r]) return;
-  S.room = r; selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
+  S.room = r; selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } guardReset(); FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
   if (!started) startGame();
   Snd.play('click');
   updateRoomArrows();
@@ -1905,13 +1914,17 @@ const guardPos = () => floorPt(GUARD_UV[0], GUARD_UV[1]);
 const guardTier = (r = S.room) => S.security[r] || 0;            // 0 = sin vigilante, 1..5
 const guardCost = (k, r = S.room) => GUARDS[k - 1].cost * ROOMS[r].cost;
 const guardProtection = (r = S.room) => (guardTier(r) ? GUARDS[guardTier(r) - 1].protect : 0);
-let guardAlert = 0;  // segundos que el vigilante se queda en pose de alerta (al contratarlo; luego, al ver un ladrón)
+let guardAlert = 0;
+// el vigilante en movimiento: post (en su puesto) · react (se da cuenta) · chase (persigue) · stun (falló el placaje) · back (vuelve)
+const G = { mode: 'post', t: 0, u: 0, v: 0, x: 0, y: 0, flip: false, phase: 0 };
+function guardReset() { G.mode = 'post'; [G.u, G.v] = GUARD_UV; [G.x, G.y] = guardPos(); }
+function guardAlarm() { if (!guardTier()) return; if (G.mode === 'post') guardReset(); G.mode = 'react'; G.t = GUARD_CHASE[guardTier() - 1].react; }  // segundos que el vigilante se queda en pose de alerta (al contratarlo; luego, al ver un ladrón)
 
 function hireGuard(k) {
   const r = S.room, c = guardCost(k, r), G = GUARDS[k - 1];
   if (k <= guardTier(r)) return;
   if (S.money < c) { Snd.play('error'); toast(`${G.name} cuesta ${money(c)}`, true); return; }
-  S.money -= c; S.security[r] = k; guardAlert = 1.6;
+  S.money -= c; S.security[r] = k; guardAlert = 1.6; guardReset();
   Snd.play('buy'); toast(`🛡️ ${G.name} vigila ${ROOMS[r].name} · protección ${Math.round(G.protect * 100)}%`);
   save(); refreshModal();
 }
@@ -1921,9 +1934,42 @@ function guardHit(px, py) {
   return Math.abs(x - gx) < 48 && y > gy - 160 && y < gy + 24;
 }
 
+function guardMove(tu, tv, speed, dt) {
+  const du = tu - G.u, dv = tv - G.v, d = Math.hypot(du, dv), step = speed * dt;
+  if (d <= step) { G.u = tu; G.v = tv; } else { G.u += du / d * step; G.v += dv / d * step; }
+  const [nx, ny] = floorPt(G.u, G.v);
+  if (Math.abs(nx - G.x) > 0.01) G.flip = nx > G.x;   // el arte mira a la izquierda
+  G.x = nx; G.y = ny; G.phase += dt * 12;
+  return d;
+}
+function updateGuardChase(dt) {
+  const k = guardTier();
+  if (!k) { G.mode = 'post'; return; }
+  const C = GUARD_CHASE[k - 1];
+  if (G.mode === 'post') { [G.u, G.v] = GUARD_UV; [G.x, G.y] = guardPos(); return; }
+  const active = thief && thief.state !== 'caught' && !(thief.state === 'out' && !thief.carry);
+  if (!active && G.mode !== 'back') G.mode = 'back';
+  G.t -= dt;
+  if (G.mode === 'react') { if (G.t <= 0) G.mode = 'chase'; return; }
+  if (G.mode === 'stun') { if (G.t <= 0) G.mode = 'chase'; return; }
+  if (G.mode === 'chase') {
+    const d = guardMove(thief.u, thief.v, C.speed, dt);
+    if (d < 0.045) {
+      if (Math.random() < C.tackle) caughtThief(false);
+      else {
+        G.mode = 'stun'; G.t = C.stun; Snd.play('error');
+        FX.floats.push({ x: G.x, y: G.y - 170, txt: '¡Se le escapa!', col: '#ff7a85', size: 28, life: 1.4, vy: -40 });
+      }
+    }
+    return;
+  }
+  if (G.mode === 'back' && guardMove(GUARD_UV[0], GUARD_UV[1], 0.12, dt) < 0.005) G.mode = 'post';
+}
+
 // Hoja de 4 fotogramas (mismas medidas que ANIM): 0 reposo · 1 y 2 gestos propios · 3 alerta
 function drawGuard() {
-  const [x, y] = guardPos(), k = guardTier();
+  const k = guardTier();
+  const [x, y] = G.mode === 'post' || !k ? guardPos() : [G.x, G.y];
   if (!k) {
     // puesto vacío: rombo punteado con escudo, invita a contratar
     const a = 0.55 + 0.25 * Math.sin(time * 3);
@@ -1934,16 +1980,23 @@ function drawGuard() {
     ctx.restore(); return;
   }
   const sheet = IMG['guard_' + k]; if (!sheet) return;
-  const cyc = time % 7;                                   // cada 7 s hace sus dos gestos
-  const f = guardAlert > 0 ? 3 : cyc > 5.6 ? 2 : cyc > 4.2 ? 1 : 0;
-  const h = 150 + k * 4, s = h / ANIM.idleH;              // los mejores, un poco más grandes
+  const cyc = time % 7, moving = G.mode === 'chase' || G.mode === 'back';
+  let f = guardAlert > 0 ? 3 : cyc > 5.6 ? 2 : cyc > 4.2 ? 1 : 0;
+  if (G.mode === 'react') f = 3;
+  if (moving) f = Math.floor(G.phase / 3) % 2 ? 3 : 0;   // corre alternando dos poses
+  if (G.mode === 'stun') f = 0;
+  const h = 150 + k * 4, s = h / ANIM.idleH;
+  const bob = moving ? -Math.abs(Math.sin(G.phase)) * 6 : f === 0 ? Math.sin(time * 2) * 1.2 : 0;
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, h * 0.24, h * 0.06, 0, 0, 7); ctx.fill();
-  ctx.translate(x, y + (f === 0 ? Math.sin(time * 2) * 1.2 : 0));
+  ctx.translate(x, y + bob); if (moving && G.flip) ctx.scale(-1, 1);
+  if (moving) ctx.rotate(-0.08);
   ctx.drawImage(sheet, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * s, -ANIM.base * s, ANIM.cw * s, ANIM.ch * s);
   ctx.restore();
+  if (G.mode === 'stun') { ctx.save(); ctx.font = '30px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💫', x + Math.sin(time * 8) * 14, y - h - 4); ctx.restore(); }
+  if (G.mode === 'react') { ctx.save(); ctx.font = '900 40px Lilita One, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = '#002a3a'; ctx.strokeText('!', x, y - h - 6); ctx.fillStyle = '#4fe3ff'; ctx.fillText('!', x, y - h - 6); ctx.restore(); }
 }
-function updateGuard(dt) { guardAlert = Math.max(0, guardAlert - dt); }
+function updateGuard(dt) { guardAlert = Math.max(0, guardAlert - dt); updateGuardChase(dt); }
 
 function guardPortrait(k, size) {
   const c = document.createElement('canvas'); c.width = size; c.height = size;
@@ -1956,7 +2009,7 @@ function guardPortrait(k, size) {
 function renderSecurity(tabs, body) {
   const r = S.room, cur = guardTier(r);
   $('#modalTitle').textContent = '🛡️ SEGURIDAD · ' + ROOMS[r].name.toUpperCase();
-  body.innerHTML = `<div class="daily-lead">${cur ? `Vigila la puerta: <b>${GUARDS[cur - 1].name}</b> · para al ${Math.round(GUARDS[cur - 1].protect * 100)}% de los ladrones` : 'Sin vigilante, cada ladrón se lleva una máquina (si no lo tocas a tiempo).'}</div>`;
+  body.innerHTML = `<div class="daily-lead">${cur ? `Vigila la puerta: <b>${GUARDS[cur - 1].name}</b> · reacciona en ${GUARD_CHASE[cur - 1].react} s y acierta el ${Math.round(GUARD_CHASE[cur - 1].tackle * 100)}% de los placajes` : 'Sin vigilante, cada ladrón se lleva una máquina (si no lo tocas a tiempo).'}</div>`;
   const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
   GUARDS.forEach((G, i) => {
     const k = i + 1, c = guardCost(k, r), own = k === cur, past = k < cur;
@@ -1964,7 +2017,8 @@ function renderSecurity(tabs, body) {
     const im = document.createElement('div'); im.className = 'img'; im.appendChild(guardPortrait(k, 130)); d.appendChild(im);
     d.insertAdjacentHTML('beforeend', `${own ? '<span class="tag">EN LA PUERTA</span>' : ''}
       <h3>${k}. ${G.name}</h3><div class="d">${G.desc}</div>
-      <div class="kv"><span>Protección</span><b>${Math.round(G.protect * 100)}%</b></div>`);
+      <div class="kv"><span>Reacción · carrera</span><b>${GUARD_CHASE[i].react} s · ${['muy lenta', 'lenta', 'normal', 'rápida', 'muy rápida'][i]}</b></div>
+      <div class="kv"><span>Acierta el placaje</span><b>${Math.round(GUARD_CHASE[i].tackle * 100)}%</b></div>`);
     const b = document.createElement('button');
     if (own) { b.className = 'btn btn-dark'; b.textContent = 'Contratado'; b.disabled = true; }
     else if (past) { b.className = 'btn btn-dark'; b.textContent = 'Ya tienes uno mejor'; b.disabled = true; }
@@ -1983,7 +2037,7 @@ function renderSecurity(tabs, body) {
 
 const THIEF_MIN = 8 * 60 * 1000, THIEF_MAX = 15 * 60 * 1000;
 const THIEF_SPEED = 0.16;          // unidades de suelo por segundo
-const THIEF_GRAB = 3;              // segundos frotándose las manos: tu oportunidad de tocarlo
+const THIEF_GRAB = 4;              // segundos frotándose las manos: tiempo para que llegue el vigilante (o lo toques tú)
 let thief = null;                  // { u, v, x, y, path, state, t, target, flip, back, phase, carry }
 
 const thiefDelay = () => THIEF_MIN + Math.random() * (THIEF_MAX - THIEF_MIN);
@@ -2006,7 +2060,7 @@ function updateThief(dt) {
     // si la máquina desaparece (vendida, sala cambiada…) se marcha
     if (T.state === 'in' && !S.machines[S.room][T.target]) thiefLeave(false);
   } else if (T.state === 'grab' && T.t >= THIEF_GRAB) {
-    if (Math.random() < guardProtection()) caughtThief(false); else stealMachine();
+    stealMachine();
   } else if (T.state === 'caught' && T.t >= 1.2) {
     thiefLeave(false);
   }
@@ -2017,24 +2071,30 @@ function spawnThief() {
   if (spots.length < 2) { S.thiefNext = Date.now() + 2 * 60 * 1000; return; } // nunca deja la sala vacía
   const target = spots[Math.floor(Math.random() * spots.length)], [su, sv] = SPOT_UV[target];
   const [x, y] = floorPt(DOOR[0], DOOR[1]);
-  thief = { u: DOOR[0], v: DOOR[1], x, y, path: [DOOR_IN, [DOOR_IN[0], sv + 0.12], [su - 0.1, sv + 0.12]], state: 'in', t: 0, target, flip: false, back: false, phase: 0, carry: false };
+  thief = { loot: null, u: DOOR[0], v: DOOR[1], x, y, path: [DOOR_IN, [DOOR_IN[0], sv + 0.12], [su - 0.1, sv + 0.12]], state: 'in', t: 0, target, flip: false, back: false, phase: 0, carry: false };
   Snd.play('error'); setTimeout(() => Snd.play('error'), 250);
-  toast(`🦹 ¡Un ladrón ha entrado en ${ROOMS[r].name}! Tócalo para pararlo`, true);
+  guardAlarm();
+  toast(`🦹 ¡Un ladrón ha entrado en ${ROOMS[r].name}!${guardTier() ? ' Tu vigilante va a por él' : ' Tócalo para pararlo'}`, true);
 }
 
 function stealMachine() {
   const r = S.room, i = thief.target, m = S.machines[r][i];
   if (!m || countRoom(r) < 2) { thiefLeave(false); return; }
+  thief.loot = { i, m };
   S.machines[r][i] = null; RT.delete(r + '_' + i);
   if (selected === i) closePanel();
   S.stats.thefts = (S.stats.thefts || 0) + 1;
   Snd.play('error');
-  toast(`😱 ¡Te han robado una ${TYPES[m.type].name} de nivel ${m.level}!${guardTier() < GUARDS.length ? ' Mejora la seguridad 🛡️' : ''}`, true);
+  toast(`😱 ¡Se lleva una ${TYPES[m.type].name} de nivel ${m.level}!${guardTier() ? ' ¡Que no escape!' : ' Contrata seguridad 🛡️'}`, true);
   thiefLeave(true); save();
 }
 
 function caughtThief(byPlayer) {
-  if (!thief || thief.state === 'caught' || thief.state === 'out') return;
+  if (!thief || thief.state === 'caught' || (thief.state === 'out' && !thief.carry)) return;
+  // si ya huía con la máquina, se recupera
+  const L = thief.loot;
+  if (L && !S.machines[S.room][L.i]) { S.machines[S.room][L.i] = L.m; S.stats.thefts = Math.max(0, (S.stats.thefts || 1) - 1); toast(`🎰 ¡Has recuperado la ${TYPES[L.m.type].name}!`); }
+  thief.loot = null; thief.carry = false;
   thief.state = 'caught'; thief.t = 0; guardAlert = 2;
   S.stats.caught = (S.stats.caught || 0) + 1;
   const bonus = Math.max(100, totalPS() * 120);
@@ -2053,7 +2113,7 @@ function thiefLeave(carry) {
 }
 
 function thiefHit(px, py) {
-  if (!thief || thief.state === 'out' || thief.state === 'caught') return false;
+  if (!thief || thief.state === 'caught' || (thief.state === 'out' && !thief.carry)) return false;
   const [x, y] = toRoom(px, py);
   return Math.abs(x - thief.x) < 40 && y > thief.y - 160 && y < thief.y + 16;
 }

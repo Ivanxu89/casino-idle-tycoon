@@ -103,7 +103,7 @@ function unlockRoom(r) {
 }
 function goRoom(r) {
   if (!S.rooms[r]) return;
-  S.room = r; selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
+  S.room = r; selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } guardReset(); FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
   if (!started) startGame();
   Snd.play('click');
   updateRoomArrows();

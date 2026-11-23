@@ -248,7 +248,7 @@ function render() {
   const items = [];
   for (const i of order) { const m = S.machines[r][i]; if (m) items.push({ y: SPOTS[i][1], f: () => drawMachine(r, i, m) }); }
   for (const w of WALK) items.push({ y: w.y, f: () => drawWalker(w) });
-  items.push({ y: guardPos()[1], f: drawGuard });
+  items.push({ y: G.mode === 'post' ? guardPos()[1] : G.y, f: drawGuard });
   if (thief) items.push({ y: thief.y, f: drawThief });
   if (giftHere()) items.push({ y: giftPos()[1], f: drawGift }); // las máquinas de delante pueden taparla: está escondida
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());

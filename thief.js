@@ -6,7 +6,7 @@
 
 const THIEF_MIN = 8 * 60 * 1000, THIEF_MAX = 15 * 60 * 1000;
 const THIEF_SPEED = 0.16;          // unidades de suelo por segundo
-const THIEF_GRAB = 3;              // segundos frotándose las manos: tu oportunidad de tocarlo
+const THIEF_GRAB = 4;              // segundos frotándose las manos: tiempo para que llegue el vigilante (o lo toques tú)
 let thief = null;                  // { u, v, x, y, path, state, t, target, flip, back, phase, carry }
 
 const thiefDelay = () => THIEF_MIN + Math.random() * (THIEF_MAX - THIEF_MIN);
@@ -29,7 +29,7 @@ function updateThief(dt) {
     // si la máquina desaparece (vendida, sala cambiada…) se marcha
     if (T.state === 'in' && !S.machines[S.room][T.target]) thiefLeave(false);
   } else if (T.state === 'grab' && T.t >= THIEF_GRAB) {
-    if (Math.random() < guardProtection()) caughtThief(false); else stealMachine();
+    stealMachine();
   } else if (T.state === 'caught' && T.t >= 1.2) {
     thiefLeave(false);
   }
@@ -40,24 +40,30 @@ function spawnThief() {
   if (spots.length < 2) { S.thiefNext = Date.now() + 2 * 60 * 1000; return; } // nunca deja la sala vacía
   const target = spots[Math.floor(Math.random() * spots.length)], [su, sv] = SPOT_UV[target];
   const [x, y] = floorPt(DOOR[0], DOOR[1]);
-  thief = { u: DOOR[0], v: DOOR[1], x, y, path: [DOOR_IN, [DOOR_IN[0], sv + 0.12], [su - 0.1, sv + 0.12]], state: 'in', t: 0, target, flip: false, back: false, phase: 0, carry: false };
+  thief = { loot: null, u: DOOR[0], v: DOOR[1], x, y, path: [DOOR_IN, [DOOR_IN[0], sv + 0.12], [su - 0.1, sv + 0.12]], state: 'in', t: 0, target, flip: false, back: false, phase: 0, carry: false };
   Snd.play('error'); setTimeout(() => Snd.play('error'), 250);
-  toast(`🦹 ¡Un ladrón ha entrado en ${ROOMS[r].name}! Tócalo para pararlo`, true);
+  guardAlarm();
+  toast(`🦹 ¡Un ladrón ha entrado en ${ROOMS[r].name}!${guardTier() ? ' Tu vigilante va a por él' : ' Tócalo para pararlo'}`, true);
 }
 
 function stealMachine() {
   const r = S.room, i = thief.target, m = S.machines[r][i];
   if (!m || countRoom(r) < 2) { thiefLeave(false); return; }
+  thief.loot = { i, m };
   S.machines[r][i] = null; RT.delete(r + '_' + i);
   if (selected === i) closePanel();
   S.stats.thefts = (S.stats.thefts || 0) + 1;
   Snd.play('error');
-  toast(`😱 ¡Te han robado una ${TYPES[m.type].name} de nivel ${m.level}!${guardTier() < GUARDS.length ? ' Mejora la seguridad 🛡️' : ''}`, true);
+  toast(`😱 ¡Se lleva una ${TYPES[m.type].name} de nivel ${m.level}!${guardTier() ? ' ¡Que no escape!' : ' Contrata seguridad 🛡️'}`, true);
   thiefLeave(true); save();
 }
 
 function caughtThief(byPlayer) {
-  if (!thief || thief.state === 'caught' || thief.state === 'out') return;
+  if (!thief || thief.state === 'caught' || (thief.state === 'out' && !thief.carry)) return;
+  // si ya huía con la máquina, se recupera
+  const L = thief.loot;
+  if (L && !S.machines[S.room][L.i]) { S.machines[S.room][L.i] = L.m; S.stats.thefts = Math.max(0, (S.stats.thefts || 1) - 1); toast(`🎰 ¡Has recuperado la ${TYPES[L.m.type].name}!`); }
+  thief.loot = null; thief.carry = false;
   thief.state = 'caught'; thief.t = 0; guardAlert = 2;
   S.stats.caught = (S.stats.caught || 0) + 1;
   const bonus = Math.max(100, totalPS() * 120);
@@ -76,7 +82,7 @@ function thiefLeave(carry) {
 }
 
 function thiefHit(px, py) {
-  if (!thief || thief.state === 'out' || thief.state === 'caught') return false;
+  if (!thief || thief.state === 'caught' || (thief.state === 'out' && !thief.carry)) return false;
   const [x, y] = toRoom(px, py);
   return Math.abs(x - thief.x) < 40 && y > thief.y - 160 && y < thief.y + 16;
 }

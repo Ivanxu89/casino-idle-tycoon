@@ -57,6 +57,15 @@ const MAX_LEVEL = 200;
 
 /* ----------------------------- SEGURIDAD (security.js) ------------------------------ */
 // cost se multiplica por el coste de la sala; protect = probabilidad de parar a un ladrón (para los ladrones futuros)
+// react = segundos hasta salir corriendo · speed = velocidad (el ladrón va a 0,16 y huye a 0,32)
+// tackle = probabilidad de placarlo al alcanzarlo · stun = segundos aturdido si falla
+const GUARD_CHASE = [
+  { react: 2.5, speed: 0.09, tackle: 0.30, stun: 2.6 },
+  { react: 2.0, speed: 0.12, tackle: 0.38, stun: 2.4 },
+  { react: 1.5, speed: 0.16, tackle: 0.45, stun: 2.0 },
+  { react: 0.9, speed: 0.22, tackle: 0.62, stun: 1.4 },
+  { react: 0.3, speed: 0.34, tackle: 0.90, stun: 0.6 },
+];
 const GUARDS = [
   { name: 'Paco el Despistado', protect: 0.40, cost: 1000,  desc: 'Más pendiente del donut que de la puerta.' },
   { name: 'Novato Nervioso',    protect: 0.55, cost: 1e5,   desc: 'Se lo toma en serio, aunque tiembla un poco.' },
