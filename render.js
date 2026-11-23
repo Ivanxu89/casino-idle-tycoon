@@ -148,33 +148,90 @@ function reelLayer(type, tier, paint) {
   rctx.globalCompositeOperation = 'destination-in'; rctx.drawImage(mask, 0, 0); rctx.globalCompositeOperation = 'source-over';
   return reelCv;
 }
-function drawReels(g, type, tier, prog) {
-  const syms = REEL_SYMS[type] || REEL_SYMS.lucky;
-  const layer = reelLayer(type, tier, (c, W, H, R) => {
-    c.fillStyle = '#fbf3e0'; c.fillRect(0, 0, W, H);
-    const tl = [R.tl[0] * W, R.tl[1] * H], tr = [R.tr[0] * W, R.tr[1] * H], bl = [R.bl[0] * W, R.bl[1] * H];
-    c.save();
-    c.setTransform((tr[0] - tl[0]) / 300, (tr[1] - tl[1]) / 300, (bl[0] - tl[0]) / 200, (bl[1] - tl[1]) / 200, tl[0], tl[1]);
-    for (let k = 0; k < 3; k++) {
-      const x0 = k * 100, stopped = prog > 0.42 + k * 0.2, speed = 1500;
-      const off = stopped ? 0 : (time * speed + k * 61) % 110;
-      for (let j = -2; j <= 2; j++) {
-        const idx = stopped ? (j === 0 ? 0 : (j + 7 + k) % syms.length) : (Math.floor((time * speed + k * 61) / 110) - j + 50 + k) % syms.length;
-        const im = IMG[syms[idx]]; if (!im) continue;
-        const sz = 74, sh = stopped ? 1 : 1.35;                 // estirado = sensación de velocidad
-        const cy = 100 + j * 110 + off;
-        c.globalAlpha = stopped ? 1 : 0.9;
-        c.drawImage(im, x0 + 50 - sz / 2, cy - sz * sh / 2, sz, sz * sh);
-      }
-      c.globalAlpha = 1;
-      if (!stopped) { c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(x0, -20, 100, 240); }
-      c.fillStyle = 'rgba(60,20,10,.55)'; c.fillRect(x0 + 98, -20, 4, 240);   // separador entre rodillos
+// Perfil de la ventana: para cada columna de píxeles de la máscara, dónde empieza y acaba el cristal.
+// Con él los rodillos se deforman columna a columna y siguen exactamente la inclinación (y las curvas) del sprite.
+const REEL_PROFILE = {};
+function reelProfile(key) {
+  if (key in REEL_PROFILE) return REEL_PROFILE[key];
+  const mask = IMG['reelmask_' + key]; let P = null;
+  try {
+    const W = mask.width, H = mask.height, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d'); x.drawImage(mask, 0, 0); const d = x.getImageData(0, 0, W, H).data;
+    const top = new Float32Array(W), bot = new Float32Array(W); let x0 = -1, x1 = -1;
+    for (let i = 0; i < W; i++) {
+      let t = -1, b = -1;
+      for (let j = 0; j < H; j++) if (d[(j * W + i) * 4 + 3] > 128) { if (t < 0) t = j; b = j; }
+      if (b - t > 4) { top[i] = t; bot[i] = b + 1; if (x0 < 0) x0 = i; x1 = i; } else top[i] = bot[i] = -1;
     }
-    // sombra curva del tambor arriba y abajo
-    const gr = c.createLinearGradient(0, -10, 0, 210);
-    gr.addColorStop(0, 'rgba(40,10,0,.55)'); gr.addColorStop(0.22, 'rgba(40,10,0,0)'); gr.addColorStop(0.78, 'rgba(40,10,0,0)'); gr.addColorStop(1, 'rgba(40,10,0,.55)');
-    c.fillStyle = gr; c.fillRect(-20, -20, 340, 240);
-    c.restore();
+    // suaviza los bordes de arriba y abajo (la máscara trae algún pico del antialias)
+    const sm = A => { const o = A.slice(); for (let i = x0 + 2; i <= x1 - 2; i++) o[i] = (A[i - 2] + A[i - 1] + A[i] + A[i + 1] + A[i + 2]) / 5; return o; };
+    if (x1 - x0 > 20) P = { x0, x1, top: sm(top), bot: sm(bot) };
+  } catch (e) { P = null; }   // sin acceso a los píxeles: se usa el paralelogramo de REEL_FIT
+  return (REEL_PROFILE[key] = P);
+}
+// Lienzo plano de los rodillos (3 tambores de FW/3 de ancho) que luego se deforma sobre la ventana
+const FW = 300, FH = 220, FS = 2, flatCv = document.createElement('canvas'); flatCv.width = FW * FS; flatCv.height = FH * FS;
+const fctx = flatCv.getContext('2d');
+const REEL_STOP = [0.42, 0.62, 0.82];   // momento del ciclo en que para cada rodillo
+function paintFlatReels(syms, prog) {
+  const c = fctx; c.setTransform(FS, 0, 0, FS, 0, 0);
+  c.fillStyle = '#fbf3e0'; c.fillRect(0, 0, FW, FH);
+  const R = FH / 2 / Math.sin(1.15), SZ = 92, STEP = 0.92;   // tambor: radio y ángulo entre símbolos
+  for (let k = 0; k < 3; k++) {
+    const x0 = k * FW / 3, cx = x0 + FW / 6, stopAt = REEL_STOP[k], stopped = prog > stopAt;
+    // mientras gira: posición continua · al parar: pequeño rebote antes de quedarse quieto
+    let pos;
+    if (!stopped) pos = (time * 13 + k * 0.55) % 1000;
+    else { const e = Math.min(1, (prog - stopAt) / 0.07); pos = -Math.sin(e * Math.PI) * 0.22 * (1 - e); }
+    const base = Math.floor(pos), frac = pos - base;
+    for (let j = -3; j <= 3; j++) {
+      const th = (j + frac) * STEP;                      // ángulo de este símbolo en el tambor
+      if (Math.abs(th) > 1.5) continue;
+      const idx = stopped ? (j === 0 ? 0 : ((j + 7 + k) % syms.length + syms.length) % syms.length)
+                          : (((base - j + 50 + k) % syms.length) + syms.length) % syms.length;
+      const im = IMG[syms[idx]]; if (!im) continue;
+      const cy = FH / 2 + Math.sin(th) * R, squash = Math.cos(th), h = SZ * squash;
+      if (stopped) { c.globalAlpha = 1; c.drawImage(im, cx - SZ / 2, cy - h / 2, SZ, h); }
+      else for (let gh = -1; gh <= 1; gh++) {             // desenfoque de movimiento: tres copias en vertical
+        c.globalAlpha = gh ? 0.28 : 0.55; c.drawImage(im, cx - SZ / 2, cy - h / 2 + gh * 16 * squash, SZ, h * 1.15);
+      }
+    }
+    c.globalAlpha = 1;
+    // sombreado del cilindro: oscuro arriba y abajo, y en los laterales de cada tambor
+    const gv = c.createLinearGradient(0, 0, 0, FH);
+    gv.addColorStop(0, 'rgba(45,12,0,.78)'); gv.addColorStop(0.2, 'rgba(45,12,0,.12)'); gv.addColorStop(0.5, 'rgba(255,255,255,.06)');
+    gv.addColorStop(0.8, 'rgba(45,12,0,.12)'); gv.addColorStop(1, 'rgba(45,12,0,.78)');
+    c.fillStyle = gv; c.fillRect(x0, 0, FW / 3, FH);
+    const gh2 = c.createLinearGradient(x0, 0, x0 + FW / 3, 0);
+    gh2.addColorStop(0, 'rgba(40,10,0,.38)'); gh2.addColorStop(0.18, 'rgba(40,10,0,0)'); gh2.addColorStop(0.82, 'rgba(40,10,0,0)'); gh2.addColorStop(1, 'rgba(40,10,0,.38)');
+    c.fillStyle = gh2; c.fillRect(x0, 0, FW / 3, FH);
+    if (!stopped) { c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x0, 0, FW / 3, FH); }
+    if (k) { c.fillStyle = 'rgba(50,15,5,.75)'; c.fillRect(x0 - 2, 0, 4, FH); c.fillStyle = 'rgba(255,215,130,.45)'; c.fillRect(x0 + 2, 0, 1.5, FH); }
+  }
+  // reflejo del cristal: una franja diagonal suave
+  const gl = c.createLinearGradient(0, 0, FW, FH);
+  gl.addColorStop(0.25, 'rgba(255,255,255,0)'); gl.addColorStop(0.34, 'rgba(255,255,255,.22)'); gl.addColorStop(0.42, 'rgba(255,255,255,0)');
+  c.fillStyle = gl; c.fillRect(0, 0, FW, FH);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+}
+function drawReels(g, type, tier, prog) {
+  const syms = REEL_SYMS[type] || REEL_SYMS.lucky, key = `${type}_${tier}`;
+  paintFlatReels(syms, prog);
+  const P = reelProfile(key);
+  const layer = reelLayer(type, tier, (c, W, H, R) => {
+    if (P) {
+      // deformación columna a columna: cada franja vertical del lienzo plano ocupa el alto de la ventana en esa x
+      const span = P.x1 - P.x0, ST = 2;
+      for (let x = P.x0; x <= P.x1; x += ST) {
+        const t = P.top[x], b = P.bot[x]; if (t < 0) continue;
+        const u = (x - P.x0) / span, sw = flatCv.width * ST / span;
+        c.drawImage(flatCv, Math.min(flatCv.width - sw, u * flatCv.width), 0, sw, flatCv.height, x, t, ST + 0.6, b - t);
+      }
+    } else {
+      const tl = [R.tl[0] * W, R.tl[1] * H], tr = [R.tr[0] * W, R.tr[1] * H], bl = [R.bl[0] * W, R.bl[1] * H];
+      c.setTransform((tr[0] - tl[0]) / flatCv.width, (tr[1] - tl[1]) / flatCv.width, (bl[0] - tl[0]) / flatCv.height, (bl[1] - tl[1]) / flatCv.height, tl[0], tl[1]);
+      c.drawImage(flatCv, 0, 0); c.setTransform(1, 0, 0, 1, 0, 0);
+    }
   });
   if (layer) ctx.drawImage(layer, g.x, g.y, g.w, g.h);
 }
