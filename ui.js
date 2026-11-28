@@ -157,7 +157,9 @@ function renderPanel() {
   const next = incomePS(m, r, m.level + 1), cur = incomePS(m, r);
   const nextMs = MILESTONES.find(x => x > m.level);
   if ($('#panel').classList.contains('hidden')) { $('#panel').classList.remove('hidden'); resize(); }
+  const here = S.machines[r].map((x, k) => (x ? k : -1)).filter(k => k >= 0), pos = here.indexOf(i);
   $('#panelBody').innerHTML = `
+    ${here.length > 1 ? `<div class="p-nav"><button class="p-arr" id="pPrev" title="Máquina anterior">‹</button><span>${pos + 1} / ${here.length}</span><button class="p-arr" id="pNext" title="Máquina siguiente">›</button></div>` : ''}
     <div class="p-head">
       <img src="${A(`assets/${T.sprite}_${spriteTier(T, tier)}.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg) drop-shadow(0 4px 6px #0008)` : ''}">
       <div><div class="p-name">${T.name}</div><div class="p-lvl">NIVEL ${m.level}${maxed ? ' (MAX)' : ''}</div>
@@ -195,6 +197,9 @@ function renderPanel() {
   const bUp = $('#bUp'); if (bUp) bUp.onclick = () => doUpgrade(i);
   const bSkip = $('#bSkip'); if (bSkip) bSkip.onclick = () => skipUpgrade(i);
   const bPlay = $('#bPlay'); if (bPlay) bPlay.onclick = () => enterSlot(i);
+  const go = d => { selected = here[(pos + d + here.length) % here.length]; Snd.play('click'); renderPanel(); };
+  const pP = $('#pPrev'); if (pP) pP.onclick = () => go(-1);
+  const pN = $('#pNext'); if (pN) pN.onclick = () => go(1);
   panelSig = sigOf(m);
 }
 const sigOf = m => `${m.level}|${!!(m.upEnd && m.upEnd > Date.now())}|${m.player}`;

@@ -1,10 +1,10 @@
 'use strict';
 /* Estado y guardado, economía, formato de números y prestigio. Compartido. */
 /* ----------------------------- ESTADO ------------------------------ */
-const SAVE_KEY = 'casinoIdleTycoon_v2'; // v2: partida nueva desde cero (precios de máquinas nuevos)
+const SAVE_KEY = 'casinoIdleTycoon_v3'; // v3: partida nueva desde cero (edificios, mapa y curva de dificultad nueva)
 function freshState() {
   return {
-    money: 25, gems: 10, totalEarned: 0,
+    money: 60, gems: 10, totalEarned: 0, welcomed: false,
     rooms: ROOMS.map((_, r) => r === 0),
     buildings: { slot: true }, // edificios comprados en el mapa (map.js)
     room: 0,
@@ -62,13 +62,16 @@ function incomePS(m, r, lvl = m.level) {
 // La primera partida es fácil: llenar la sala y mejorar sale barato. Cada vez que vendes el casino sube un
 // nivel de dificultad: todo cuesta el doble y los precios suben más deprisa con cada máquina, mejora o cliente.
 const difficulty = () => S.prestiges || 0;
+// Curva dentro de la partida: al empezar todo cuesta la mitad para enganchar, y según ganas dinero
+// los precios suben solos: x0,5 al principio · x1 al ganar 1M · x2 a 1B · x4 a 1T · x8 a 1Qa…
+const runEase = () => { const l = Math.log10(1 + (S.runEarned || 0)); return l <= 6 ? 0.5 * Math.pow(2, l / 6) : Math.pow(2, (l - 6) / 3); };
 function diff(d = difficulty()) {
   return {
-    price: Math.pow(2, d),                    // todo ×2 por cada venta
+    price: Math.pow(2, d) * runEase(),        // todo ×2 por cada venta, y sube según avanzas
     ramp:  Math.min(1.6, 1.25 + 0.07 * d),    // cada máquina extra en la sala
     steep: Math.min(6, 1.4 + 0.9 * d),        // recargo extra a partir de la máquina «from»
     from:  Math.max(3, 5 - d),
-    up:    Math.min(1.16, 1.10 + 0.012 * d),  // cada nivel de mejora
+    up:    Math.min(1.16, 1.09 + 0.012 * d),  // cada nivel de mejora
     hire:  Math.min(2.6, 1.6 + 0.15 * d),     // cada copia de un mismo cliente
   };
 }
@@ -78,7 +81,8 @@ const licenseCost = id => TYPES[id].license * diff().price;
 const roomUnlockCost = r => ROOMS[r].unlock * diff().price;
 const buildingCost = b => BUILDINGS[b].cost * diff().price;
 const hasBuilding = b => !!(S.buildings && S.buildings[b]);
-const upgradeTime = (m, r) => (3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
+// las primeras mejoras son casi instantáneas; luego tardan cada vez más
+const upgradeTime = (m, r) => (m.level < 5 ? 1 + m.level : 3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
 const countRoom = r => S.machines[r].filter(Boolean).length;
 // cada máquina extra en la sala sube el precio (D.ramp) y, a partir de la D.from-ésima, además D.steep por cada una
 const placeCost = (type, r) => { const n = countRoom(r), D = diff(); return TYPES[type].place * ROOMS[r].cost * D.price * Math.pow(D.ramp, n) * Math.pow(D.steep, Math.max(0, n - D.from)); };

@@ -102,7 +102,7 @@ function showMenu() {
   $('#menu').classList.remove('hidden');
   $('#menuStats').textContent = `Dinero: ${money(S.money)} · Ingresos: ${money(totalPS())}/s · Edificios: ${Object.keys(BUILDINGS).filter(hasBuilding).length}/4 · 👑 ${S.chips || 0}`;
 }
-$('#mPlay').onclick = () => { Snd.init(); Snd.play('buy'); showMap(); };   // Jugar → mapa de edificios
+$('#mPlay').onclick = () => { Snd.init(); Snd.play('buy'); showMap(); if (!S.welcomed) welcome(); };   // Jugar → mapa de edificios
 $('#btnHome').onclick = () => { Snd.play('click'); save(); showMenu(); };
 window.addEventListener('resize', resize);
 window.addEventListener('beforeunload', save);

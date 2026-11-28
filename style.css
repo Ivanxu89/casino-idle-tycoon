@@ -262,3 +262,22 @@ body.in-slot .room-arrow{opacity:0;pointer-events:none}
 .bld-tables{display:flex;gap:6px;justify-content:center;margin:6px 0 10px}
 .bld-tables img{height:74px}
 .bld .kv{display:flex;justify-content:space-between;gap:10px;font-weight:800;padding:3px 0;border-bottom:1px solid #ffffff14}
+
+/* flechas del panel: pasar de una máquina a otra de la sala */
+.p-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin:-2px 40px 8px 0;font-weight:900;color:var(--muted);font-size:13px}
+.p-arr{width:40px;height:34px;border-radius:12px;border:2px solid #7b4dff;background:linear-gradient(#5a2fb0,#3a1a80);color:#fff;font:30px/1 'Lilita One';cursor:pointer;box-shadow:0 3px 0 #1f0d45;padding:0 0 4px}
+.p-arr:hover{filter:brightness(1.2)}
+.p-arr:active{transform:translateY(2px);box-shadow:0 1px 0 #1f0d45}
+/* anfitrión (host.js) */
+.host{position:fixed;inset:0;z-index:60;background:radial-gradient(ellipse at 30% 80%,#3b167099,#0a0418cc);display:flex;align-items:flex-end;justify-content:center;gap:0;padding:0 2vw}
+.host.hidden{display:none}
+.host-fig{width:min(42vh,46vw);height:min(76vh,84vw);flex:none;cursor:pointer;animation:hostIn .5s cubic-bezier(.2,1.4,.4,1)}
+.host-spr{width:100%;height:100%;background-repeat:no-repeat;background-size:400% 100%;transform-origin:50% 100%;filter:drop-shadow(0 10px 20px #000a)}
+.host-bub{position:relative;align-self:center;max-width:min(520px,52vw);margin-bottom:12vh;background:#fff;color:#2a1240;border:5px solid #ffcf3f;border-radius:26px;padding:18px 22px 16px;
+  box-shadow:0 8px 0 #a86200,0 16px 40px #000a;animation:hostIn .5s .15s both cubic-bezier(.2,1.4,.4,1)}
+.host-bub:before{content:'';position:absolute;left:-26px;bottom:40px;border:14px solid transparent;border-right:16px solid #ffcf3f}
+.host-name{font:20px 'Lilita One';color:#c2477e;margin-bottom:6px}
+.host-txt{font-weight:800;font-size:clamp(15px,2.2vw,21px);line-height:1.35;min-height:3.9em}
+.host-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+@keyframes hostIn{from{transform:translateY(40px) scale(.9);opacity:0}to{transform:none;opacity:1}}
+@media (max-width:640px){.host{flex-direction:column;align-items:center;justify-content:flex-end}.host-bub{order:-1;max-width:92vw;margin:0 0 -10px}.host-bub:before{left:50%;bottom:-28px;border:14px solid transparent;border-top:16px solid #ffcf3f}.host-fig{height:56vh;width:31vh}}
