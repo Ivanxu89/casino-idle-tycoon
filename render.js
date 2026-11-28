@@ -6,7 +6,7 @@ const SPR = {};
 // tragaperras y mesas tienen 5 aspectos (0-4)
 const spriteTier = (T, t) => Math.min(t, 4); // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
 const AVATARS = Object.keys(PLAYERS);
-const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag'];
+const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag', 'ui_lock'];
 const SYM_IMGS = ['sym_7', 'sym_cherry', 'sym_bell', 'sym_bar', 'sym_diamond', 'sym_lemon', 'sym_star', 'sym_crown',
   // símbolos temáticos de cada tragaperras
   'sym_orange', 'sym_watermelon', 'sym_ingot', 'sym_pearl', 'sym_lantern', 'sym_ccoin', 'sym_scarab', 'sym_eye', 'sym_ankh',

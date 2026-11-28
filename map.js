@@ -130,55 +130,12 @@ function drawFountains() {
   mctx.restore();
 }
 
-/* ---------- luces de los edificios ---------- */
-// polígono algo más grande que el dibujado a mano, para que el gris tape también letreros y adornos
-function bigPoly(B, f = 1.07) { const [cx, cy] = B.c; return B.poly.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]); }
-const BLD_COL = { slot: [255, 200, 70], poker: [255, 90, 220], blackjack: [80, 255, 140], bingo: [90, 200, 255] };
-function drawBuildingLights(B, poly, path, k) {
-  const [r, g, b] = BLD_COL[k], [cx, cy] = B.c;
-  const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), w = x1 - x0, h = y1 - y0;
-  mctx.save(); mctx.globalCompositeOperation = 'lighter';
-  // halo que respira alrededor del edificio
-  const pulse = 0.5 + 0.5 * Math.sin(mapT * 2.2 + cx);
-  const halo = mctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.75);
-  halo.addColorStop(0, `rgba(${r},${g},${b},${0.10 + 0.10 * pulse})`); halo.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  mctx.fillStyle = halo; mctx.beginPath(); mctx.ellipse(cx, cy, w * 0.75, h * 0.75, 0, 0, 7); mctx.fill();
-  // dentro del edificio: barrido de luz diagonal y destellos
-  mctx.save(); path(); mctx.clip();
-  const sx = x0 - w * 0.5 + ((mapT * 0.35 + cx * 0.001) % 1.6) * w * 1.25;
-  const sw = mctx.createLinearGradient(sx - 60, y0, sx + 60, y0 + 60);
-  sw.addColorStop(0, 'rgba(255,255,255,0)'); sw.addColorStop(0.5, 'rgba(255,250,220,.22)'); sw.addColorStop(1, 'rgba(255,255,255,0)');
-  mctx.fillStyle = sw; mctx.fillRect(x0, y0, w, h);
-  for (let i = 0; i < 9; i++) {
-    const ph = (mapT * 0.8 + i * 0.37 + cx * 0.01) % 1, a = Math.sin(ph * Math.PI);
-    const px = x0 + w * (0.12 + 0.76 * ((Math.sin(i * 12.9898 + cx) * 43758.5453) % 1 + 1) % 1);
-    const py = y0 + h * (0.10 + 0.70 * ((Math.sin(i * 78.233 + cy) * 12345.678) % 1 + 1) % 1);
-    const rr2 = 5 + 13 * a;
-    mctx.fillStyle = `rgba(255,255,240,${0.85 * a})`; mctx.beginPath();
-    for (let q = 0; q < 8; q++) { const rad = q % 2 ? rr2 * 0.22 : rr2, an = q * Math.PI / 4 + mapT; mctx.lineTo(px + Math.cos(an) * rad, py + Math.sin(an) * rad); }
-    mctx.fill();
-  }
-  mctx.restore();
-  // borde de neón que late, del color del edificio
-  path(); mctx.strokeStyle = `rgba(${r},${g},${b},${0.25 + 0.35 * pulse})`; mctx.lineWidth = 5; mctx.shadowColor = `rgb(${r},${g},${b})`; mctx.shadowBlur = 18; mctx.stroke();
-  mctx.restore();
-}
-
-// candado dorado dibujado a mano (se balancea un poco y brilla al pasar por encima)
+// candado (arte de Magnific, mismo estilo que los iconos de moneda y gema); se balancea un poco
 function drawLock(x, y, hot) {
-  mctx.save(); mctx.translate(x, y); mctx.rotate(Math.sin(mapT * 2.2 + x) * 0.06); const s = hot ? 1.12 : 1; mctx.scale(s, s);
-  const glow = mctx.createRadialGradient(0, 10, 4, 0, 10, 90); glow.addColorStop(0, 'rgba(255,210,90,.35)'); glow.addColorStop(1, 'rgba(255,210,90,0)');
-  mctx.fillStyle = glow; mctx.beginPath(); mctx.arc(0, 10, 90, 0, 7); mctx.fill();
-  // arco
-  mctx.lineCap = 'round'; mctx.strokeStyle = '#3a1500'; mctx.lineWidth = 22; mctx.beginPath(); mctx.arc(0, -12, 30, Math.PI, 0); mctx.lineTo(30, 8); mctx.moveTo(-30, -12); mctx.lineTo(-30, 8); mctx.stroke();
-  mctx.strokeStyle = '#d9dde6'; mctx.lineWidth = 13; mctx.beginPath(); mctx.arc(0, -12, 30, Math.PI, 0); mctx.lineTo(30, 8); mctx.moveTo(-30, -12); mctx.lineTo(-30, 8); mctx.stroke();
-  // cuerpo
-  const body = mctx.createLinearGradient(0, 0, 0, 70); body.addColorStop(0, '#ffe27a'); body.addColorStop(1, '#e08a10');
-  mctx.fillStyle = body; mctx.strokeStyle = '#3a1500'; mctx.lineWidth = 6; rr(mctx, -46, 0, 92, 70, 16); mctx.fill(); mctx.stroke();
-  mctx.fillStyle = 'rgba(255,255,255,.35)'; rr(mctx, -38, 6, 76, 14, 7); mctx.fill();
-  // ojo de la cerradura
-  mctx.fillStyle = '#3a1500'; mctx.beginPath(); mctx.arc(0, 30, 10, 0, 7); mctx.fill(); rr(mctx, -5, 32, 10, 22, 4); mctx.fill();
+  const im = IMG.ui_lock; if (!im) return;
+  const s = (hot ? 1.12 : 1) * 120 / im.width;
+  mctx.save(); mctx.translate(x, y); mctx.rotate(Math.sin(mapT * 2.2 + x) * 0.06); mctx.scale(s, s);
+  mctx.drawImage(im, -im.width / 2, -im.height / 2);
   mctx.restore();
 }
 
@@ -203,18 +160,6 @@ function renderMap(dt) {
   mctx.save(); mctx.beginPath(); mctx.rect(0, 0, M.W, M.H); mctx.clip();   // nada se sale del mapa
   if (im) mctx.drawImage(im, 0, 0, M.W, M.H);
   drawFountains();
-  // edificios: luces si son tuyos; los bloqueados se ven tal cual, con un candado encima
-  for (const [k, B] of Object.entries(M.b)) {
-    const own = hasBuilding(k), poly = bigPoly(B);
-    const path = () => { mctx.beginPath(); poly.forEach(([x, y], i) => (i ? mctx.lineTo(x, y) : mctx.moveTo(x, y))); mctx.closePath(); };
-    mctx.save(); path();
-    if (own) drawBuildingLights(B, poly, path, k);
-    if (mapHover === k) {
-      mctx.globalCompositeOperation = 'lighter'; mctx.fillStyle = own ? 'rgba(255,220,120,.14)' : 'rgba(200,200,255,.08)'; path(); mctx.fill();
-      mctx.globalCompositeOperation = 'source-over'; mctx.strokeStyle = own ? '#ffcf3f' : '#b9a8e0'; mctx.lineWidth = 4; mctx.setLineDash([14, 10]); mctx.lineDashOffset = -mapT * 40; path(); mctx.stroke();
-    }
-    mctx.restore();
-  }
   mctx.restore();
   for (const [k, B] of Object.entries(M.b)) {
     const own = hasBuilding(k), hot = mapHover === k, bob = Math.sin(mapT * 2.4 + B.c[0]) * 4;
