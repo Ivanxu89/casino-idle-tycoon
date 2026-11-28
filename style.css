@@ -87,7 +87,7 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 body.speed-x2 #hIncome::after{content:' ⏩x2';color:#c4002a;font-weight:900}
 body.speed-x2 #cv{filter:saturate(1.15) brightness(1.05)}
 body.in-slot .boosters{opacity:0;pointer-events:none}
-.goal{position:absolute;left:14px;top:178px;max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
+.goal{position:absolute;left:14px;top:196px;max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
   border-radius:14px;padding:8px 12px;font-weight:800;font-size:14px;box-shadow:0 6px 18px #0007}
 .goal-ttl{font:13px 'Lilita One';color:var(--gold);letter-spacing:1px}
 .goal .btn{margin-top:6px}
