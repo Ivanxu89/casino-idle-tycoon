@@ -62,7 +62,7 @@ const ROOM_WELCOME = {
     { pose: 'wave', t: '¡Bienvenido a MundiSlot, el reino de las tragaperras! 🎰' },
     { pose: 'talk', t: 'Toca un hueco con el ➕ del suelo para colocar tu primera Lucky 7. Cada vez que gire, ganarás monedas.' },
     { pose: 'talk', t: 'Toca una máquina para mejorarla y sentar a un cliente: los clientes más ricos apuestan más.' },
-    { pose: 'ok', t: '¡Llena la sala y abre las siguientes con las flechas de los lados!', btn: '¡Vamos! ▶' },
+    { pose: 'ok', t: '¡Llena la sala y empieza a amasar pasta!', btn: '¡Vamos! ▶' },
   ],
   bingo: [
     { pose: 'wave', t: '¡Bienvenido a MundiBingo! 🎱 ¡Qué bien suena ese bombo!' },
