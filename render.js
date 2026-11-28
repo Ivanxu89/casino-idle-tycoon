@@ -397,30 +397,37 @@ function drawMachine(r, i, m) {
       else if (A.flash > 0) drawReelFlash(g, m.type, tier, A.flash);
     } else {
       drawTableAnim(m.type, g, A);
+      drawTableSeat(g, m, A, i);   // el cliente, sentado en su silla (dentro del rebote de la mesa)
     }
     ctx.restore();
 
-    // cliente
-    if (m.type === 'bingo') drawBingoSeats(g, m, A, i);
-    else if (T.cat === 'slot') {
-      // de espaldas, delante de la ventana de rodillos, mirando a la máquina
-      drawPlayerBack(ctx, sx - g.w * 0.36, sy + g.w * 0.30, 150, m.player, time + i, A.cheer, A.spin > 0.75);
-    } else {
-      drawPerson(ctx, sx - g.w * 0.30, sy + g.h * 0.34, 150, m.player, time + i, A.cheer);
-    }
+    // cliente de las tragaperras: de espaldas, delante de la ventana de rodillos, mirando a la máquina
+    if (T.cat === 'slot') drawPlayerBack(ctx, sx - g.w * 0.36, sy + g.w * 0.30, 150, m.player, time + i, A.cheer, A.spin > 0.75);
 }
-// Mesa de bingo: la abuela, el señor de la barba y la señora pelirroja ya vienen sentados en el dibujo de la mesa
-// (bingo_0..4). La silla de delante a la izquierda queda libre: ahí se sienta el cliente que eliges,
-// de espaldas mirando a la mesa (clients_sit.webp: un fotograma por cliente, en el orden de PLAYERS).
+// Mesas: los jugadores fijos vienen ya sentados en el dibujo de cada mesa (Magnific, 5 niveles) y queda
+// una silla libre delante a la izquierda. Ahí se sienta el cliente que eliges, de espaldas mirando a la mesa
+// (clients_sit.webp: un fotograma por cliente, en el orden de PLAYERS).
+//  u,v = pies del cliente (0-1 en la mesa) · k = escala · back = respaldo de esa silla, que se vuelve a pintar
+//  por delante del cliente para que quede sentado DENTRO de la silla (el taburete del blackjack no tiene).
 const SIT_ORDER = Object.keys(PLAYERS);
-const BINGO_SEAT = { u: 0.25, v: 0.87, k: 0.74 };
-function drawBingoSeats(g, m, A, i) {
-  const img = IMG.clients_sit, f = SIT_ORDER.indexOf(m.player); if (!img || f < 0) return;
-  const x = g.x + g.w * BINGO_SEAT.u, y = g.y + g.h * BINGO_SEAT.v, k = BINGO_SEAT.k;
-  const jump = A.cheer > 0 ? Math.sin(A.cheer * Math.PI) * 12 : Math.sin(time * 2 + i) * 1;
+const TABLE_SEAT = {
+  bingo:     { u: 0.23, v: 0.90, k: 0.72, back: [[0.00, 0.50], [0.17, 0.53], [0.17, 0.92], [0.00, 0.92]] },
+  poker:     { u: 0.19, v: 0.74, k: 0.70, back: [[0.00, 0.44], [0.10, 0.40], [0.21, 0.46], [0.21, 0.92], [0.00, 0.92]] },
+  blackjack: { u: 0.12, v: 0.76, k: 0.76, back: null },
+};
+function drawTableSeat(g, m, A, i) {
+  const S0 = TABLE_SEAT[m.type], img = IMG.clients_sit, f = SIT_ORDER.indexOf(m.player);
+  if (!S0 || !img || f < 0) return;
+  const x = g.x + g.w * S0.u, y = g.y + g.h * S0.v, k = S0.k;
+  const jump = A.cheer > 0 ? Math.sin(A.cheer * Math.PI) * 10 : Math.sin(time * 2 + i) * 0.8;
   ctx.save(); ctx.translate(x, y - jump); ctx.scale(-1, 1);          // el arte mira a la izquierda: espejo para mirar a la mesa
   ctx.drawImage(img, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
   ctx.restore();
+  if (S0.back && g.img) {                                           // respaldo por delante
+    ctx.save(); ctx.beginPath();
+    S0.back.forEach(([u, v], n) => (n ? ctx.lineTo(g.x + g.w * u, g.y + g.h * v) : ctx.moveTo(g.x + g.w * u, g.y + g.h * v)));
+    ctx.closePath(); ctx.clip(); ctx.drawImage(g.img, g.x, g.y, g.w, g.h); ctx.restore();
+  }
 }
 function drawLabels(r, i, m, now) {
     const T = TYPES[m.type], g = mGeom(i, m), sx = SPOTS[i][0];
