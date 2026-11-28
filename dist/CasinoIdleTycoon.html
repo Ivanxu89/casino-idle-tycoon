@@ -2623,13 +2623,13 @@ function renderMissions(tabs, body) {
 const MAPS = {
   h: { img: 'map_h', W: 1800, H: 1004,
     b: { slot:      { poly: [[250, 120], [420, 0], [640, 40], [700, 330], [690, 420], [560, 470], [420, 500], [250, 430], [210, 380], [215, 250]], c: [450, 280] },
-         poker:     { poly: [[1100, 140], [1150, 40], [1290, 20], [1450, 60], [1640, 160], [1650, 330], [1600, 430], [1440, 470], [1300, 460], [1200, 430], [1110, 340]], c: [1380, 280] },
+         poker:     { poly: [[1100, 140], [1150, 40], [1290, 20], [1450, 60], [1640, 160], [1650, 330], [1600, 430], [1440, 500], [1300, 470], [1200, 430], [1110, 410], [1040, 380], [1040, 280], [1090, 250]], c: [1380, 280] },
          blackjack: { poly: [[250, 640], [290, 560], [480, 540], [620, 580], [650, 720], [670, 820], [560, 900], [420, 960], [260, 930], [150, 860], [160, 700]], c: [420, 760] },
          bingo:     { poly: [[1240, 650], [1280, 560], [1440, 510], [1580, 540], [1650, 620], [1670, 780], [1600, 880], [1460, 940], [1330, 930], [1210, 880], [1170, 780]], c: [1420, 740] } },
     fount: [[905, 418, 62, 24, 372], [910, 562, 88, 36, 492]],   // x, y, radio x, radio y, alto del chorro
     roads: [[[-80, 780], [420, 1030]], [[1820, 345], [1480, 515]], [[1820, 815], [1440, 1010]], [[500, 945], [800, 795]], [[-60, 320], [560, 630]]] },
   v: { img: 'map_v', W: 1004, H: 1800,
-    b: { poker:     { poly: [[10, 250], [110, 150], [250, 80], [400, 140], [440, 250], [450, 420], [380, 520], [260, 610], [150, 620], [20, 560], [0, 450]], c: [230, 350] },
+    b: { poker:     { poly: [[10, 250], [110, 150], [250, 80], [400, 140], [440, 250], [470, 350], [500, 400], [490, 470], [380, 520], [260, 610], [150, 620], [20, 560], [0, 450]], c: [230, 350] },
          slot:      { poly: [[600, 280], [650, 140], [760, 80], [880, 130], [970, 330], [990, 520], [900, 600], [760, 600], [620, 540], [590, 420]], c: [780, 380] },
          bingo:     { poly: [[20, 1330], [90, 1230], [240, 1190], [380, 1250], [440, 1380], [480, 1480], [400, 1560], [270, 1610], [120, 1560], [20, 1480]], c: [250, 1420] },
          blackjack: { poly: [[570, 1320], [640, 1240], [780, 1210], [900, 1280], [960, 1390], [950, 1530], [820, 1600], [700, 1620], [580, 1560], [560, 1420]], c: [770, 1420] } },
@@ -2661,8 +2661,9 @@ function mapResize() {
   mapCv.width = w * MV.dpr; mapCv.height = h * MV.dpr;
   MV.key = w / h >= 0.9 ? 'h' : 'v';
   const M = MAPS[MV.key];
-  MV.s = Math.max(w / M.W, h / M.H);                 // cubre toda la pantalla
-  MV.ox = (w - M.W * MV.s) / 2; MV.oy = (h - M.H * MV.s) / 2;
+  const top = 58;                                     // barra superior
+  MV.s = Math.min(w / M.W, (h - top) / M.H) * 0.97;   // se ve el mapa entero, algo más alejado
+  MV.ox = (w - M.W * MV.s) / 2; MV.oy = top + (h - top - M.H * MV.s) / 2;
 }
 const toMap = (px, py) => [(px - MV.ox) / MV.s, (py - MV.oy) / MV.s];
 
@@ -2745,6 +2746,41 @@ function drawFountains() {
   mctx.restore();
 }
 
+/* ---------- luces de los edificios ---------- */
+// polígono algo más grande que el dibujado a mano, para que el gris tape también letreros y adornos
+function bigPoly(B, f = 1.07) { const [cx, cy] = B.c; return B.poly.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]); }
+const BLD_COL = { slot: [255, 200, 70], poker: [255, 90, 220], blackjack: [80, 255, 140], bingo: [90, 200, 255] };
+function drawBuildingLights(B, poly, path, k) {
+  const [r, g, b] = BLD_COL[k], [cx, cy] = B.c;
+  const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), w = x1 - x0, h = y1 - y0;
+  mctx.save(); mctx.globalCompositeOperation = 'lighter';
+  // halo que respira alrededor del edificio
+  const pulse = 0.5 + 0.5 * Math.sin(mapT * 2.2 + cx);
+  const halo = mctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.75);
+  halo.addColorStop(0, `rgba(${r},${g},${b},${0.10 + 0.10 * pulse})`); halo.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  mctx.fillStyle = halo; mctx.beginPath(); mctx.ellipse(cx, cy, w * 0.75, h * 0.75, 0, 0, 7); mctx.fill();
+  // dentro del edificio: barrido de luz diagonal y destellos
+  mctx.save(); path(); mctx.clip();
+  const sx = x0 - w * 0.5 + ((mapT * 0.35 + cx * 0.001) % 1.6) * w * 1.25;
+  const sw = mctx.createLinearGradient(sx - 60, y0, sx + 60, y0 + 60);
+  sw.addColorStop(0, 'rgba(255,255,255,0)'); sw.addColorStop(0.5, 'rgba(255,250,220,.22)'); sw.addColorStop(1, 'rgba(255,255,255,0)');
+  mctx.fillStyle = sw; mctx.fillRect(x0, y0, w, h);
+  for (let i = 0; i < 9; i++) {
+    const ph = (mapT * 0.8 + i * 0.37 + cx * 0.01) % 1, a = Math.sin(ph * Math.PI);
+    const px = x0 + w * (0.12 + 0.76 * ((Math.sin(i * 12.9898 + cx) * 43758.5453) % 1 + 1) % 1);
+    const py = y0 + h * (0.10 + 0.70 * ((Math.sin(i * 78.233 + cy) * 12345.678) % 1 + 1) % 1);
+    const rr2 = 5 + 13 * a;
+    mctx.fillStyle = `rgba(255,255,240,${0.85 * a})`; mctx.beginPath();
+    for (let q = 0; q < 8; q++) { const rad = q % 2 ? rr2 * 0.22 : rr2, an = q * Math.PI / 4 + mapT; mctx.lineTo(px + Math.cos(an) * rad, py + Math.sin(an) * rad); }
+    mctx.fill();
+  }
+  mctx.restore();
+  // borde de neón que late, del color del edificio
+  path(); mctx.strokeStyle = `rgba(${r},${g},${b},${0.25 + 0.35 * pulse})`; mctx.lineWidth = 5; mctx.shadowColor = `rgb(${r},${g},${b})`; mctx.shadowBlur = 18; mctx.stroke();
+  mctx.restore();
+}
+
 /* ---------- dibujo ---------- */
 function drawBadge(x, y, txt, sub, locked, hot) {
   mctx.save(); mctx.translate(x, y); const s = hot ? 1.08 : 1; mctx.scale(s, s);
@@ -2759,25 +2795,33 @@ function drawBadge(x, y, txt, sub, locked, hot) {
   mctx.restore();
 }
 function renderMap(dt) {
-  mapT += dt; updateCars(dt); updateFountains(dt);
+  mapT += dt; updateFountains(dt);
   const M = MAPS[MV.key], im = IMG[M.img];
   mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.fillStyle = '#1a0b33'; mctx.fillRect(0, 0, mapCv.width, mapCv.height);
   mctx.setTransform(MV.dpr * MV.s, 0, 0, MV.dpr * MV.s, MV.dpr * MV.ox, MV.dpr * MV.oy);
+  mctx.save(); mctx.beginPath(); mctx.rect(0, 0, M.W, M.H); mctx.clip();   // nada se sale del mapa
   if (im) mctx.drawImage(im, 0, 0, M.W, M.H);
   drawFountains();
-  CARS.forEach(drawCar);
-  // edificios: gris si no son tuyos; brillo al pasar por encima
+  // edificios: luces si son tuyos; tapados en gris oscuro si no
   const gray = grayMap(MV.key);
   for (const [k, B] of Object.entries(M.b)) {
-    const own = hasBuilding(k);
-    mctx.save(); mctx.beginPath(); B.poly.forEach(([x, y], i) => (i ? mctx.lineTo(x, y) : mctx.moveTo(x, y))); mctx.closePath();
-    if (!own) { mctx.save(); mctx.clip(); if (gray) mctx.drawImage(gray, 0, 0, M.W, M.H); else { mctx.fillStyle = 'rgba(30,30,40,.6)'; mctx.fill(); } mctx.restore(); }
+    const own = hasBuilding(k), poly = bigPoly(B);
+    const path = () => { mctx.beginPath(); poly.forEach(([x, y], i) => (i ? mctx.lineTo(x, y) : mctx.moveTo(x, y))); mctx.closePath(); };
+    mctx.save(); path();
+    if (!own) {
+      mctx.save(); mctx.clip();
+      if (gray) mctx.drawImage(gray, 0, 0, M.W, M.H);
+      mctx.fillStyle = 'rgba(14,8,28,.45)'; mctx.fill();
+      mctx.restore();
+      mctx.strokeStyle = 'rgba(160,150,190,.35)'; mctx.lineWidth = 3; mctx.setLineDash([10, 10]); mctx.stroke(); mctx.setLineDash([]);
+    } else drawBuildingLights(B, poly, path, k);
     if (mapHover === k) {
-      mctx.globalCompositeOperation = 'lighter'; mctx.fillStyle = own ? 'rgba(255,220,120,.16)' : 'rgba(200,200,255,.10)'; mctx.fill();
-      mctx.globalCompositeOperation = 'source-over'; mctx.strokeStyle = own ? '#ffcf3f' : '#b9a8e0'; mctx.lineWidth = 4; mctx.setLineDash([14, 10]); mctx.lineDashOffset = -mapT * 40; mctx.stroke();
+      mctx.globalCompositeOperation = 'lighter'; mctx.fillStyle = own ? 'rgba(255,220,120,.14)' : 'rgba(200,200,255,.08)'; path(); mctx.fill();
+      mctx.globalCompositeOperation = 'source-over'; mctx.strokeStyle = own ? '#ffcf3f' : '#b9a8e0'; mctx.lineWidth = 4; mctx.setLineDash([14, 10]); mctx.lineDashOffset = -mapT * 40; path(); mctx.stroke();
     }
     mctx.restore();
   }
+  mctx.restore();
   for (const [k, B] of Object.entries(M.b)) {
     const own = hasBuilding(k), hot = mapHover === k, bob = Math.sin(mapT * 2.4 + B.c[0]) * 4;
     if (own) drawBadge(B.c[0], B.c[1] + 40 + bob, '▶ ' + BUILDINGS[k].name, k === 'slot' ? null : `${countRoom(BUILDINGS[k].rooms[0])}/4 mesas`, false, hot);
@@ -2790,7 +2834,7 @@ function showMap() {
   Snd.init();
   started = false; closePanel(); cancelPick(); closeModal();
   $('#menu').classList.add('hidden'); $('#map').classList.remove('hidden');
-  mapOpen = true; mapResize(); spawnCars(); updateMapHUD();
+  mapOpen = true; mapResize(); updateMapHUD();
 }
 function hideMap() { mapOpen = false; $('#map').classList.add('hidden'); }
 function enterBuilding(k) {
@@ -2843,7 +2887,7 @@ mapCv.addEventListener('click', e => {
 });
 $('#mapMenu').onclick = () => { Snd.play('click'); hideMap(); showMenu(); };
 $('#btnMap').onclick = () => { Snd.play('click'); save(); showMap(); };
-window.addEventListener('resize', () => { if (mapOpen) { const k = MV.key; mapResize(); if (k !== MV.key) spawnCars(); } });
+window.addEventListener('resize', () => { if (mapOpen) mapResize(); });
 
 </script>
 <script>/* main.js */
