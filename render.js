@@ -98,16 +98,20 @@ const cv = $('#cv'), ctx = cv.getContext('2d');
 const view = { s: 1, ox: 0, oy: 0, dpr: 1 };
 function resize() {
   view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  $('#game').style.setProperty('--hud-h', $('#hud').getBoundingClientRect().height + 'px');
   const w = cv.clientWidth, h = cv.clientHeight;
   cv.width = w * view.dpr; cv.height = h * view.dpr;
-  const narrow = w < 760;
-  const panelW = !narrow && !$('#panel').classList.contains('hidden') ? 360 : 0;
+  const narrow = w < 760, portrait = h > w;
+  const panelW = !narrow && !portrait && !$('#panel').classList.contains('hidden') ? 360 : 0;
   $('#game').style.setProperty('--panel-w', panelW + 'px'); // la flecha derecha se aparta del panel
-  const availH = h - (narrow ? 110 : 70), availW = w - panelW;
+  const bottomBar = portrait ? 78 : 0;                     // en vertical los botones van en una barra abajo
+  // en vertical la sala empieza bajo los potenciadores
+  const topH = portrait ? Math.max(110, ($('.boosters').getBoundingClientRect().bottom || 0) + 8) : narrow ? 110 : 70;
+  const availH = h - topH - bottomBar, availW = w - panelW;
   // encuadre: el suelo y las máquinas llenan la pantalla; las paredes del fondo quedan recortadas
   view.s = Math.min(availW / 1380, availH / 1000);
   view.ox = availW / 2 - 770 * view.s;
-  view.oy = (narrow ? 110 : 70) + availH / 2 - 960 * view.s;
+  view.oy = topH + availH / 2 - 960 * view.s;
 }
 const toRoom = (px, py) => [(px - view.ox) / view.s, (py - view.oy) / view.s];
 

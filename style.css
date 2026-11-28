@@ -74,7 +74,7 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 
 /* ---------- Goal ---------- */
 /* ---------- Potenciadores ---------- */
-.boosters{position:absolute;left:14px;top:84px;display:flex;gap:10px;z-index:4}
+.boosters{position:absolute;left:14px;top:calc(var(--hud-h,78px) + 6px);display:flex;gap:10px;z-index:4}
 .booster{position:relative;width:86px;padding:8px 4px 6px;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:1px;
   background:linear-gradient(#4a3a6a,#2a1d45);border:2px solid #6a5a8a;color:var(--muted);box-shadow:0 4px 0 #1f0d45,0 8px 16px #0008;filter:saturate(.6)}
 .booster .bi{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 3px #0008)}
@@ -87,7 +87,7 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 body.speed-x2 #hIncome::after{content:' ⏩x2';color:#c4002a;font-weight:900}
 body.speed-x2 #cv{filter:saturate(1.15) brightness(1.05)}
 body.in-slot .boosters{opacity:0;pointer-events:none}
-.goal{position:absolute;left:14px;top:196px;max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
+.goal{position:absolute;left:14px;top:calc(var(--hud-h,78px) + 118px);max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
   border-radius:14px;padding:8px 12px;font-weight:800;font-size:14px;box-shadow:0 6px 18px #0007}
 .goal-ttl{font:13px 'Lilita One';color:var(--gold);letter-spacing:1px}
 .goal .btn{margin-top:6px}
@@ -281,3 +281,16 @@ body.in-slot .room-arrow{opacity:0;pointer-events:none}
 .host-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
 @keyframes hostIn{from{transform:translateY(40px) scale(.9);opacity:0}to{transform:none;opacity:1}}
 @media (max-width:640px){.host{flex-direction:column;align-items:center;justify-content:flex-end}.host-bub{order:-1;max-width:92vw;margin:0 0 -10px}.host-bub:before{left:50%;bottom:-28px;border:14px solid transparent;border-top:16px solid #ffcf3f}.host-fig{height:56vh;width:31vh}}
+
+/* ---------- pantalla vertical: botones del HUD en una barra abajo ---------- */
+@media (orientation:portrait){
+  .hud-btns{position:fixed;left:0;right:0;bottom:0;z-index:6;justify-content:space-around;gap:4px;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(rgba(18,6,42,0),#12062aee 35%)}
+  .hbtn{flex:1;max-width:86px;min-width:0;padding:6px 4px}
+  .hbtn span{display:block;font-size:10px}
+  .goal{top:auto;bottom:86px;left:10px;max-width:70vw}
+  .panel{left:8px;right:8px;top:auto;bottom:84px;height:52vh;width:auto}
+  .room-arrow.right{right:14px}
+  .booster{width:72px;padding:5px 3px 4px}
+  .booster .bi{width:34px;height:34px}
+}
