@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Casino Idle Tycoon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
@@ -79,7 +80,7 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 
 /* ---------- Goal ---------- */
 /* ---------- Potenciadores ---------- */
-.boosters{position:absolute;left:14px;top:84px;display:flex;gap:10px;z-index:4}
+.boosters{position:absolute;left:14px;top:calc(var(--hud-h,78px) + 6px);display:flex;gap:10px;z-index:4}
 .booster{position:relative;width:86px;padding:8px 4px 6px;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:1px;
   background:linear-gradient(#4a3a6a,#2a1d45);border:2px solid #6a5a8a;color:var(--muted);box-shadow:0 4px 0 #1f0d45,0 8px 16px #0008;filter:saturate(.6)}
 .booster .bi{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 3px #0008)}
@@ -92,7 +93,7 @@ body.in-slot #hud,body.in-slot #goal,body.in-slot #panel,body.in-slot #toasts{op
 body.speed-x2 #hIncome::after{content:' ⏩x2';color:#c4002a;font-weight:900}
 body.speed-x2 #cv{filter:saturate(1.15) brightness(1.05)}
 body.in-slot .boosters{opacity:0;pointer-events:none}
-.goal{position:absolute;left:14px;top:196px;max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
+.goal{position:absolute;left:14px;top:calc(var(--hud-h,78px) + 118px);max-width:270px;background:rgba(43,20,88,.92);border:2px solid var(--gold);
   border-radius:14px;padding:8px 12px;font-weight:800;font-size:14px;box-shadow:0 6px 18px #0007}
 .goal-ttl{font:13px 'Lilita One';color:var(--gold);letter-spacing:1px}
 .goal .btn{margin-top:6px}
@@ -286,6 +287,19 @@ body.in-slot .room-arrow{opacity:0;pointer-events:none}
 .host-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
 @keyframes hostIn{from{transform:translateY(40px) scale(.9);opacity:0}to{transform:none;opacity:1}}
 @media (max-width:640px){.host{flex-direction:column;align-items:center;justify-content:flex-end}.host-bub{order:-1;max-width:92vw;margin:0 0 -10px}.host-bub:before{left:50%;bottom:-28px;border:14px solid transparent;border-top:16px solid #ffcf3f}.host-fig{height:56vh;width:31vh}}
+
+/* ---------- pantalla vertical: botones del HUD en una barra abajo ---------- */
+@media (orientation:portrait){
+  .hud-btns{position:fixed;left:0;right:0;bottom:0;z-index:6;justify-content:space-around;gap:4px;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(rgba(18,6,42,0),#12062aee 35%)}
+  .hbtn{flex:1;max-width:86px;min-width:0;padding:6px 4px}
+  .hbtn span{display:block;font-size:10px}
+  .goal{top:auto;bottom:86px;left:10px;max-width:70vw}
+  .panel{left:8px;right:8px;top:auto;bottom:84px;height:52vh;width:auto}
+  .room-arrow.right{right:14px}
+  .booster{width:72px;padding:5px 3px 4px}
+  .booster .bi{width:34px;height:34px}
+}
 
 </style>
 
@@ -994,16 +1008,20 @@ const cv = $('#cv'), ctx = cv.getContext('2d');
 const view = { s: 1, ox: 0, oy: 0, dpr: 1 };
 function resize() {
   view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  $('#game').style.setProperty('--hud-h', $('#hud').getBoundingClientRect().height + 'px');
   const w = cv.clientWidth, h = cv.clientHeight;
   cv.width = w * view.dpr; cv.height = h * view.dpr;
-  const narrow = w < 760;
-  const panelW = !narrow && !$('#panel').classList.contains('hidden') ? 360 : 0;
+  const narrow = w < 760, portrait = h > w;
+  const panelW = !narrow && !portrait && !$('#panel').classList.contains('hidden') ? 360 : 0;
   $('#game').style.setProperty('--panel-w', panelW + 'px'); // la flecha derecha se aparta del panel
-  const availH = h - (narrow ? 110 : 70), availW = w - panelW;
+  const bottomBar = portrait ? 78 : 0;                     // en vertical los botones van en una barra abajo
+  // en vertical la sala empieza bajo los potenciadores
+  const topH = portrait ? Math.max(110, ($('.boosters').getBoundingClientRect().bottom || 0) + 8) : narrow ? 110 : 70;
+  const availH = h - topH - bottomBar, availW = w - panelW;
   // encuadre: el suelo y las máquinas llenan la pantalla; las paredes del fondo quedan recortadas
   view.s = Math.min(availW / 1380, availH / 1000);
   view.ox = availW / 2 - 770 * view.s;
-  view.oy = (narrow ? 110 : 70) + availH / 2 - 960 * view.s;
+  view.oy = topH + availH / 2 - 960 * view.s;
 }
 const toRoom = (px, py) => [(px - view.ox) / view.s, (py - view.oy) / view.s];
 
