@@ -5,7 +5,8 @@ const SAVE_KEY = 'casinoIdleTycoon_v2'; // v2: partida nueva desde cero (precios
 function freshState() {
   return {
     money: 25, gems: 10, totalEarned: 0,
-    rooms: [true, false, false, false, false],
+    rooms: ROOMS.map((_, r) => r === 0),
+    buildings: { slot: true }, // edificios comprados en el mapa (map.js)
     room: 0,
     licenses: { lucky: true },
     players: {}, // cuántos clientes de cada tipo has contratado (el Estudiante es ilimitado)
@@ -32,9 +33,14 @@ function load() {
 // adapta partidas guardadas con versiones anteriores
 function migrate() {
   S.security = ROOMS.map((_, r) => (S.security && S.security[r]) || 0);
+  S.rooms = ROOMS.map((_, r) => !!(S.rooms && S.rooms[r]) || r === 0);
+  S.buildings = Object.assign({ slot: true }, S.buildings);
+  if (!S.rooms[S.room]) S.room = 0;
   S.boost = Object.assign({ lvlReady: 0, speedReady: 0, speedEnd: 0 }, S.boost);
   // salas de 6 huecos → 9 huecos
   S.machines = ROOMS.map((_, r) => { const row = (S.machines[r] || []).slice(0, SPOTS_PER_ROOM); while (row.length < SPOTS_PER_ROOM) row.push(null); return row; });
+  // MundiSlot ya solo tiene tragaperras: las mesas viejas (y los dados) desaparecen; cada mesa vive en su edificio
+  S.machines.forEach((row, r) => row.forEach((m, i) => { if (m && (!TYPES[m.type] || TYPES[m.type].bld !== bldOf(r) || i >= spotsIn(r))) row[i] = null; }));
   // clientes: antes «desbloqueado = true» y se podía poner en todas las máquinas; ahora cada uno es una contratación
   for (const pid of Object.keys(S.players)) {
     const n = S.players[pid] === true ? 1 : +S.players[pid] || 0;
@@ -70,6 +76,8 @@ const diffName = (d = difficulty()) => ['Fácil', 'Normal', 'Difícil', 'Muy dif
 const upgradeCost = (m, r) => { const D = diff(); return TYPES[m.type].upBase * Math.pow(D.up, m.level - 1) * ROOMS[r].cost * D.price; };
 const licenseCost = id => TYPES[id].license * diff().price;
 const roomUnlockCost = r => ROOMS[r].unlock * diff().price;
+const buildingCost = b => BUILDINGS[b].cost * diff().price;
+const hasBuilding = b => !!(S.buildings && S.buildings[b]);
 const upgradeTime = (m, r) => (3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
 const countRoom = r => S.machines[r].filter(Boolean).length;
 // cada máquina extra en la sala sube el precio (D.ramp) y, a partir de la D.from-ésima, además D.steep por cada una

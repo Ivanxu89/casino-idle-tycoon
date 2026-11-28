@@ -5,7 +5,7 @@ function hitTest(px, py) {
   const [x, y] = toRoom(px, py);
   const r = S.room;
   // primero máquinas (las de delante primero)
-  const order = [...Array(SPOTS_PER_ROOM).keys()].sort((a, b) => SPOTS[b][1] - SPOTS[a][1]);
+  const order = [...Array(SPOTS.length).keys()].sort((a, b) => SPOTS[b][1] - SPOTS[a][1]);
   for (const i of order) {
     const m = S.machines[r][i]; if (!m) continue;
     const g = mGeom(i, m);
@@ -90,8 +90,11 @@ function buyLicense(id) {
 }
 function choose(id) {
   closeModal();
+  const T = TYPES[id];
+  if (!hasBuilding(T.bld)) { toast(`Primero compra ${BUILDINGS[T.bld].name} en el mapa 🗺️`, true); return; }
+  if (bldOf(S.room) !== T.bld) goRoom(BUILDINGS[T.bld].rooms[0]);   // cada mesa en su edificio
   if (!started) startGame();
-  const free = S.machines[S.room].findIndex(x => !x);
+  const free = S.machines[S.room].slice(0, spotsIn(S.room)).findIndex(x => !x);
   if (free < 0) { toast('Esta sala está llena. Prueba en otra sala.', true); return; }
   pickType = id; $('#pickName').textContent = TYPES[id].name; $('#pickHint').classList.remove('hidden');
 }
@@ -104,24 +107,26 @@ function unlockRoom(r) {
   S.money -= c; S.rooms[r] = true; S.gems += 5; Snd.play('level'); toast(`🏛️ ¡${ROOMS[r].name} abierta! +5◆`); save(); refreshModal();
 }
 function goRoom(r) {
-  if (!S.rooms[r]) return;
-  S.room = r; selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } guardReset(); FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
+  if (!S.rooms[r] || !hasBuilding(bldOf(r))) return;
+  S.room = r; setRoomGeom(r); S.lastRoom = Object.assign({}, S.lastRoom, { [bldOf(r)]: r }); selected = -1; if (thief) { thief = null; S.thiefNext = Date.now() + 60 * 1000; } guardReset(); FX.floats = []; FX.parts = []; WALK = []; closePanel(); cancelPick(); closeModal(); $('#hRoom').textContent = ROOMS[r].name;
   if (!started) startGame();
   Snd.play('click');
   updateRoomArrows();
 }
 
 // Flechas a los lados: sala anterior / siguiente. La siguiente cerrada muestra su precio y abre el modal de salas.
+// Solo se pasa entre las salas del mismo edificio (MundiSlot tiene 5; los demás, una).
+const bldRooms = (r = S.room) => BUILDINGS[bldOf(r)].rooms;
 function updateRoomArrows() {
-  const r = S.room, P = $('#roomPrev'), N = $('#roomNext');
+  const r = S.room, P = $('#roomPrev'), N = $('#roomNext'), list = bldRooms(), first = list[0], lastR = list[list.length - 1];
   const giftIn = k => !!(S.gift && S.gift.room === k);
-  P.classList.toggle('hidden', r === 0);
-  if (r > 0) {
+  P.classList.toggle('hidden', r === first);
+  if (r > first) {
     P.querySelector('.ra-name').textContent = ROOMS[r - 1].name;
     P.querySelector('.ra-gift').classList.toggle('hidden', !giftIn(r - 1));
   }
-  N.classList.toggle('hidden', r === ROOMS.length - 1);
-  if (r < ROOMS.length - 1) {
+  N.classList.toggle('hidden', r === lastR);
+  if (r < lastR) {
     const open = S.rooms[r + 1];
     N.classList.toggle('locked', !open);
     N.querySelector('.ra-name').textContent = open ? ROOMS[r + 1].name : '🔒 ' + money(roomUnlockCost(r + 1));
@@ -129,8 +134,8 @@ function updateRoomArrows() {
   }
 }
 function stepRoom(d) {
-  const t = S.room + d;
-  if (t < 0 || t >= ROOMS.length) return;
+  const t = S.room + d, list = bldRooms();
+  if (!list.includes(t)) return;
   if (!S.rooms[t]) { openModal('rooms'); return; }
   goRoom(t);
   cv.animate([{ opacity: 0.15, transform: `translateX(${d * 60}px)` }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
@@ -172,7 +177,7 @@ function renderPanel() {
     <div class="sec-ttl">HITOS (x2 ingresos)</div>
     <div class="milestones">${MILESTONES.map(x => `<span class="ms ${m.level >= x ? 'done' : ''}">Nv ${x}</span>`).join('')}</div>
     ${nextMs ? `<div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:6px">Próximo hito: Nv ${nextMs} → ingresos x2 y +${2 + r}◆. </div>` : ''}
-    ${nextVisualLevel(m.level) ? `<div class="stat"><span>✨ Mejora visual en Nv ${nextVisualLevel(m.level)}</span><img src="${A(`assets/${T.sprite}_${Math.min(tierOf(m.level) + 1, T.cat === 'slot' ? 4 : 3)}.webp`)}" style="height:46px"></div>` : '<div class="stat"><span>✨ Aspecto máximo conseguido</span></div>'}
+    ${nextVisualLevel(m.level) ? `<div class="stat"><span>✨ Mejora visual en Nv ${nextVisualLevel(m.level)}</span><img src="${A(`assets/${T.sprite}_${Math.min(tierOf(m.level) + 1, 4)}.webp`)}" style="height:46px"></div>` : '<div class="stat"><span>✨ Aspecto máximo conseguido</span></div>'}
     <div class="sec-ttl">ELIGE CLIENTE</div>
     <div class="pl-grid" id="plGrid"></div>
   `;
@@ -249,16 +254,17 @@ function refreshModal() {
     } else {
       for (const [id, T] of Object.entries(TYPES)) {
         if (T.cat !== modalTab) continue;
-        const own = S.licenses[id];
+        const isT = T.cat === 'table', own = isT ? hasBuilding(T.bld) : S.licenses[id];
         const c = document.createElement('div'); c.className = 'card' + (own ? ' owned' : ' locked');
         c.innerHTML = `
-          ${own ? '<span class="tag">LICENCIA</span>' : ''}
+          ${own ? `<span class="tag">${isT ? BUILDINGS[T.bld].name.toUpperCase() : 'LICENCIA'}</span>` : ''}
           <div class="img"><img src="${A(`assets/${T.sprite}_1.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg) drop-shadow(0 4px 8px #000a)` : ''}"></div>
           <h3>${T.name}</h3><div class="d">${T.desc}</div>
           <div class="kv"><span>Ingreso base</span><b>${money(T.base)}/s</b></div>
-          <div class="kv"><span>Colocar (sala actual)</span><b>${money(placeCost(id, S.room))}</b></div>`;
+          <div class="kv"><span>${isT ? 'Se juega en' : 'Colocar (sala actual)'}</span><b>${isT ? BUILDINGS[T.bld].name : money(placeCost(id, S.room))}</b></div>`;
         const b = document.createElement('button');
-        if (own) { b.className = 'btn btn-green'; b.textContent = 'Elegir y colocar'; b.onclick = () => choose(id); }
+        if (isT && !own) { b.className = 'btn btn-dark'; b.textContent = `🔒 Compra ${BUILDINGS[T.bld].name} · ${money(buildingCost(T.bld))}`; b.onclick = () => openBuilding(T.bld); }
+        else if (own) { b.className = 'btn btn-green'; b.textContent = 'Elegir y colocar'; b.onclick = () => choose(id); }
         else { b.className = 'btn btn-gold'; b.textContent = 'Licencia ' + money(licenseCost(id)); b.disabled = S.money < licenseCost(id); b.onclick = () => buyLicense(id); }
         c.appendChild(b); cards.appendChild(c);
       }
@@ -267,7 +273,8 @@ function refreshModal() {
     $('#modalTitle').textContent = 'COLOCAR EN ' + ROOMS[S.room].name.toUpperCase();
     const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
     for (const [id, T] of Object.entries(TYPES)) {
-      const own = S.licenses[id], c = placeCost(id, S.room);
+      if (T.bld !== bldOf(S.room)) continue;
+      const own = T.cat === 'table' || S.licenses[id], c = placeCost(id, S.room);
       const d = document.createElement('div'); d.className = 'card' + (own ? '' : ' locked');
       d.innerHTML = `<div class="img"><img src="${A(`assets/${T.sprite}_0.webp`)}" style="${T.hue ? `filter:hue-rotate(${T.hue}deg)` : ''}"></div>
         <h3>${T.name}</h3><div class="kv"><span>Ingreso Nv1</span><b>${money(T.base * ROOMS[S.room].inc)}/s</b></div>`;
@@ -277,9 +284,12 @@ function refreshModal() {
       d.appendChild(b); cards.appendChild(d);
     }
   } else if (modalKind === 'rooms') {
-    $('#modalTitle').textContent = 'SALAS';
+    $('#modalTitle').textContent = 'SALAS · ' + BUILDINGS[bldOf(S.room)].name.toUpperCase();
     const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
+    const mapBtn = document.createElement('button'); mapBtn.className = 'btn btn-blue'; mapBtn.style.margin = '0 0 12px'; mapBtn.textContent = '🗺️ Ir al mapa de edificios';
+    mapBtn.onclick = () => { closeModal(); showMap(); }; body.insertBefore(mapBtn, cards);
     ROOMS.forEach((R, r) => {
+      if (R.bld !== bldOf(S.room)) return;
       const own = S.rooms[r];
       const c = document.createElement('div'); c.className = 'card room-card' + (own ? ' owned' : ' locked') + (S.room === r ? ' cur' : '');
       c.innerHTML = `${own ? `<span class="tag">${S.room === r ? 'AQUÍ ESTÁS' : 'ABIERTA'}</span>` : ''}
@@ -288,7 +298,7 @@ function refreshModal() {
         <div class="kv"><span>Ingresos</span><b>x${R.inc}</b></div>
         <div class="kv"><span>Coste de mejoras</span><b style="color:#ff7a85">x${fmt(R.cost)}</b></div>
         <div class="kv"><span>Tiempo de mejoras</span><b style="color:#ff7a85">x${R.time}</b></div>
-        <div class="kv"><span>Máquinas</span><b>${countRoom(r)}/${SPOTS_PER_ROOM}</b></div>`;
+        <div class="kv"><span>Máquinas</span><b>${countRoom(r)}/${spotsIn(r)}</b></div>`;
       const b = document.createElement('button');
       if (own) { b.className = 'btn btn-blue'; b.textContent = S.room === r ? 'Jugar aquí' : 'Ir a la sala'; b.onclick = () => goRoom(r); }
       else { b.className = 'btn btn-gold'; b.textContent = 'Abrir ' + money(roomUnlockCost(r)); b.disabled = S.money < roomUnlockCost(r) || !S.rooms[r - 1]; b.onclick = () => unlockRoom(r); }
@@ -308,7 +318,7 @@ function refreshModal() {
     $('#sReset').onclick = e => {
       if (!e.target.dataset.armed) { e.target.dataset.armed = '1'; e.target.textContent = '⚠️ ¿Seguro? Pulsa otra vez para borrar'; e.target.className = 'btn btn-red btn-sm'; return; }
       try { localStorage.removeItem(SAVE_KEY); } catch (err) {}
-      S = freshState(); giveTestBonus(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save();
+      S = freshState(); giveTestBonus(); RT.clear(); WALK = []; closeModal(); closePanel(); goRoom(0); save(); showMap();
     };
   } else if (modalKind === 'prestige') {
     $('#modalTitle').textContent = '👑 VENDER EL CASINO';
@@ -340,6 +350,8 @@ function refreshModal() {
     $('#bPrest').onclick = doPrestige;
   } else if (modalKind === 'security') {
     renderSecurity(tabs, body);
+  } else if (modalKind === 'building') {
+    renderBuilding(tabs, body);
   } else if (modalKind === 'missions') {
     renderMissions(tabs, body);
   } else if (modalKind === 'offline') {

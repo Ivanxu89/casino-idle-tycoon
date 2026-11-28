@@ -18,8 +18,9 @@ for f in sorted((ROOT / 'assets').glob('*.webp')):
 
 css = (ROOT / 'style.css').read_text(encoding='utf-8')
 css = css.replace('url(assets/room_0.webp)', f'url({assets["assets/room_0.webp"]})')
-# Las slots (carpeta slots/) van en base64: su HTML trae etiquetas </script> que romperían el documento
-slots = {f.stem: base64.b64encode(f.read_bytes()).decode() for f in sorted((ROOT / 'slots').glob('*.html'))}
+# Las slots (carpeta slots/) van como texto JSON con cada «<» escrito <, así sus </script> y <!-- no rompen el documento
+# (antes iban en base64, que ocupa un 33 % más)
+slots = {f.stem: f.read_text(encoding='utf-8') for f in sorted((ROOT / 'slots').glob('*.html'))}
 
 html = (ROOT / 'index.html').read_text(encoding='utf-8')
 html = html.replace('<link rel="stylesheet" href="style.css">', f'<style>\n{css}\n</style>')
@@ -32,7 +33,7 @@ for i, name in enumerate(scripts):
     inline = f'<script>/* {name} */\n{js}\n</script>'
     if i == 0:
         inline = (f'<script>window.ASSETS = {json.dumps(assets)};</script>\n'
-                  f'<script>window.SLOT_HTML = {json.dumps(slots)};</script>\n' + inline)
+                  f'<script>window.SLOT_HTML = {json.dumps(slots).replace("<", chr(92) + "u003c")};</script>\n' + inline)
     html = html.replace(f'<script src="{name}"></script>', inline)
 assert 'href="style.css"' not in html and '<script src=' not in html, 'quedan archivos sin incrustar'
 

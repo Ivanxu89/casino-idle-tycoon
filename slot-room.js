@@ -13,12 +13,9 @@ const ZOOM_MS = 650;
 
 let slotSess = null; // { machine, id, frame, net, idle, bal, timer }
 
-// En la versión de un solo archivo la slot viaja incrustada (base64) en window.SLOT_HTML
+// En la versión de un solo archivo la slot viaja incrustada como texto en window.SLOT_HTML
 function slotSource(id) {
-  const b64 = window.SLOT_HTML && window.SLOT_HTML[id];
-  if (!b64) return null;
-  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+  return (window.SLOT_HTML && window.SLOT_HTML[id]) || null;
 }
 
 // Entrar en la máquina: zoom de cámara y, al terminar, el submenú para elegir slot

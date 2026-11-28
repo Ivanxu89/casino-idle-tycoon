@@ -3,7 +3,7 @@
    Cuanto mejor es, más cuesta y más protege. De momento solo se guarda la protección (guardProtection),
    que usarán los ladrones aleatorios cuando se añadan. Dueño: Iván. */
 
-const GUARD_UV = [0.07, 0.56]; // al lado de la puerta, sobre la pared izquierda
+let GUARD_UV = [0.07, 0.56]; // al lado de la puerta, sobre la pared izquierda
 const guardPos = () => floorPt(GUARD_UV[0], GUARD_UV[1]);
 const guardTier = (r = S.room) => S.security[r] || 0;            // 0 = sin vigilante, 1..5
 const guardCost = (k, r = S.room) => GUARDS[k - 1].cost * ROOMS[r].cost * diff().price;
