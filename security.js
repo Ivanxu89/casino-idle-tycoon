@@ -3,7 +3,7 @@
    Cuanto mejor es, más cuesta y más protege. De momento solo se guarda la protección (guardProtection),
    que usarán los ladrones aleatorios cuando se añadan. Dueño: Iván. */
 
-const GUARD_UV = [0.07, 0.56]; // al lado de la puerta, sobre la pared izquierda
+let GUARD_UV = [0.07, 0.56]; // al lado de la puerta, sobre la pared izquierda
 const guardPos = () => floorPt(GUARD_UV[0], GUARD_UV[1]);
 const guardTier = (r = S.room) => S.security[r] || 0;            // 0 = sin vigilante, 1..5
 const guardCost = (k, r = S.room) => GUARDS[k - 1].cost * ROOMS[r].cost * diff().price;
@@ -22,6 +22,18 @@ function hireGuard(k) {
   S.money -= c; S.security[r] = k; guardAlert = 1.6; guardReset();
   Snd.play('buy'); toast(`🛡️ ${G.name} vigila ${ROOMS[r].name} · protección ${Math.round(G.protect * 100)}%`);
   save(); refreshModal();
+}
+
+// La primera vez que abres la seguridad, el anfitrión explica por qué conviene un vigilante
+function securityIntro() {
+  if (S.secWelcome) return;
+  S.secWelcome = true; save();
+  Host.say([
+    { pose: 'wave', t: '¡Ojo! Este es el puesto de seguridad de la sala. 🛡️' },
+    { pose: 'talk', t: 'De vez en cuando entra un ladrón 🦹 a llevarse una de tus máquinas… ¡con todos sus niveles!' },
+    { pose: 'talk', t: 'Un vigilante sale corriendo a placarlo. Cuanto mejor sea, antes reacciona y más fácil lo atrapa. ¡Y si lo pilla, te llevas una recompensa!' },
+    { pose: 'ok', t: 'Tú también puedes tocar al ladrón para pararlo, pero con un buen vigilante dormirás tranquilo. 😉', btn: '¡Entendido! ▶' },
+  ]);
 }
 
 function guardHit(px, py) {
@@ -157,6 +169,7 @@ function guardPortrait(k, size) {
 
 function renderSecurity(tabs, body) {
   const r = S.room, cur = guardTier(r);
+  securityIntro();
   $('#modalTitle').textContent = '🛡️ SEGURIDAD · ' + ROOMS[r].name.toUpperCase();
   body.innerHTML = `<div class="daily-lead">${cur ? `Vigila la puerta: <b>${GUARDS[cur - 1].name}</b> · reacciona en ${GUARD_CHASE[cur - 1].react} s y acierta el ${Math.round(GUARD_CHASE[cur - 1].tackle * 100)}% de los placajes` : 'Sin vigilante, cada ladrón se lleva una máquina (si no lo tocas a tiempo).'}</div>`;
   const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);

@@ -1,11 +1,12 @@
 'use strict';
 /* Estado y guardado, economía, formato de números y prestigio. Compartido. */
 /* ----------------------------- ESTADO ------------------------------ */
-const SAVE_KEY = 'casinoIdleTycoon_v2'; // v2: partida nueva desde cero (precios de máquinas nuevos)
+const SAVE_KEY = 'casinoIdleTycoon_v5'; // v5: partida nueva desde cero
 function freshState() {
   return {
-    money: 25, gems: 10, totalEarned: 0,
-    rooms: [true, false, false, false, false],
+    money: 60, gems: 10, totalEarned: 0, welcomed: false, roomWelcome: {}, // anfitrión (host.js)
+    rooms: ROOMS.map((_, r) => r === 0),
+    buildings: { slot: true }, // edificios comprados en el mapa (map.js)
     room: 0,
     licenses: { lucky: true },
     players: {}, // cuántos clientes de cada tipo has contratado (el Estudiante es ilimitado)
@@ -32,9 +33,20 @@ function load() {
 // adapta partidas guardadas con versiones anteriores
 function migrate() {
   S.security = ROOMS.map((_, r) => (S.security && S.security[r]) || 0);
+  // una vez: se quitan los vigilantes ya contratados para poder ver la explicación del anfitrión (se devuelve lo pagado)
+  if (!S.secIntroReset) {
+    S.secIntroReset = true;
+    S.security.forEach((k, r) => { for (let t = 1; t <= k; t++) S.money += GUARDS[t - 1].cost * ROOMS[r].cost; });
+    S.security = ROOMS.map(() => 0); S.secWelcome = false;
+  }
+  S.rooms = ROOMS.map((_, r) => !!(S.rooms && S.rooms[r]) || r === 0);
+  S.buildings = Object.assign({ slot: true }, S.buildings);
+  if (!S.rooms[S.room]) S.room = 0;
   S.boost = Object.assign({ lvlReady: 0, speedReady: 0, speedEnd: 0 }, S.boost);
   // salas de 6 huecos → 9 huecos
   S.machines = ROOMS.map((_, r) => { const row = (S.machines[r] || []).slice(0, SPOTS_PER_ROOM); while (row.length < SPOTS_PER_ROOM) row.push(null); return row; });
+  // MundiSlot ya solo tiene tragaperras: las mesas viejas (y los dados) desaparecen; cada mesa vive en su edificio
+  S.machines.forEach((row, r) => row.forEach((m, i) => { if (m && (!TYPES[m.type] || TYPES[m.type].bld !== bldOf(r) || i >= spotsIn(r))) row[i] = null; }));
   // clientes: antes «desbloqueado = true» y se podía poner en todas las máquinas; ahora cada uno es una contratación
   for (const pid of Object.keys(S.players)) {
     const n = S.players[pid] === true ? 1 : +S.players[pid] || 0;
@@ -56,13 +68,16 @@ function incomePS(m, r, lvl = m.level) {
 // La primera partida es fácil: llenar la sala y mejorar sale barato. Cada vez que vendes el casino sube un
 // nivel de dificultad: todo cuesta el doble y los precios suben más deprisa con cada máquina, mejora o cliente.
 const difficulty = () => S.prestiges || 0;
+// Curva dentro de la partida: al empezar todo cuesta la mitad para enganchar, y según ganas dinero
+// los precios suben solos: x0,5 al principio · x1 al ganar 1M · x2 a 1B · x4 a 1T · x8 a 1Qa…
+const runEase = () => { const l = Math.log10(1 + (S.runEarned || 0)); return l <= 6 ? 0.5 * Math.pow(2, l / 6) : Math.pow(2, (l - 6) / 3); };
 function diff(d = difficulty()) {
   return {
-    price: Math.pow(2, d),                    // todo ×2 por cada venta
+    price: Math.pow(2, d) * runEase(),        // todo ×2 por cada venta, y sube según avanzas
     ramp:  Math.min(1.6, 1.25 + 0.07 * d),    // cada máquina extra en la sala
     steep: Math.min(6, 1.4 + 0.9 * d),        // recargo extra a partir de la máquina «from»
     from:  Math.max(3, 5 - d),
-    up:    Math.min(1.16, 1.10 + 0.012 * d),  // cada nivel de mejora
+    up:    Math.min(1.16, 1.09 + 0.012 * d),  // cada nivel de mejora
     hire:  Math.min(2.6, 1.6 + 0.15 * d),     // cada copia de un mismo cliente
   };
 }
@@ -70,7 +85,10 @@ const diffName = (d = difficulty()) => ['Fácil', 'Normal', 'Difícil', 'Muy dif
 const upgradeCost = (m, r) => { const D = diff(); return TYPES[m.type].upBase * Math.pow(D.up, m.level - 1) * ROOMS[r].cost * D.price; };
 const licenseCost = id => TYPES[id].license * diff().price;
 const roomUnlockCost = r => ROOMS[r].unlock * diff().price;
-const upgradeTime = (m, r) => (3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
+const buildingCost = b => BUILDINGS[b].cost * diff().price;
+const hasBuilding = b => !!(S.buildings && S.buildings[b]);
+// las primeras mejoras son casi instantáneas; luego tardan cada vez más
+const upgradeTime = (m, r) => (m.level < 5 ? 1 + m.level : 3 + 0.9 * Math.pow(m.level, 1.35)) * ROOMS[r].time; // segundos
 const countRoom = r => S.machines[r].filter(Boolean).length;
 // cada máquina extra en la sala sube el precio (D.ramp) y, a partir de la D.from-ésima, además D.steep por cada una
 const placeCost = (type, r) => { const n = countRoom(r), D = diff(); return TYPES[type].place * ROOMS[r].cost * D.price * Math.pow(D.ramp, n) * Math.pow(D.steep, Math.max(0, n - D.from)); };
@@ -130,7 +148,8 @@ function doPrestige() {
   if (Date.now() > prestigeArmUntil) { prestigeArmUntil = Date.now() + 4000; Snd.play('click'); refreshModal(); return; }
   prestigeArmUntil = 0;
   const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned,
-    missions: S.missions, daily: S.daily, stats: S.stats, security: S.security, boost: S.boost };
+    missions: S.missions, daily: S.daily, stats: S.stats, security: S.security, boost: S.boost,
+    secIntroReset: S.secIntroReset, secWelcome: S.secWelcome, welcomed: S.welcomed, roomWelcome: S.roomWelcome };
   S = Object.assign(freshState(), keep);
   giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);

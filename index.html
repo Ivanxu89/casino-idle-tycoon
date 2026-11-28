@@ -25,6 +25,7 @@
       <button class="hbtn" data-open="missions" id="btnMissions" title="Misiones y recompensa diaria">📋<span>Misiones</span><i id="missionsBadge" class="badge"></i></button>
       <button class="hbtn" data-open="prestige" id="btnPrestige" title="Vender el casino (prestigio)">👑<span>Vender</span><i id="prestigeBadge" class="badge"></i></button>
       <button class="hbtn" data-open="sound" title="Sonido">🔊<span>Sonido</span></button>
+      <button class="hbtn" id="btnMap" title="Mapa de edificios">🗺️<span>Mapa</span></button>
       <button class="hbtn" id="btnHome" title="Menú">🏠<span>Menú</span></button>
     </div>
   </div>
@@ -64,6 +65,16 @@
     <button id="slotExit" class="btn btn-red btn-sm">⬅ Volver al casino</button>
   </div>
   <div id="slotHost" class="slot-host"></div>
+</div>
+
+<!-- ============ MAPA DE EDIFICIOS (map.js) ============ -->
+<div id="map" class="map hidden">
+  <canvas id="mapCv"></canvas>
+  <div class="map-top">
+    <div class="hud-money"><div><div id="mapMoney" class="big">0</div><div id="mapIncome" class="small">+0 /s</div></div></div>
+    <div class="map-ttl">🗺️ ELIGE TU CASINO</div>
+    <button class="hbtn" id="mapMenu" title="Menú">🏠<span>Menú</span></button>
+  </div>
 </div>
 
 <!-- ============ MENÚ PRINCIPAL ============ -->
@@ -108,4 +119,6 @@
 <script src="boosters.js"></script>
 <script src="missions.js"></script>
 <script src="online.js"></script>
+<script src="map.js"></script>
+<script src="host.js"></script>
 <script src="main.js"></script>

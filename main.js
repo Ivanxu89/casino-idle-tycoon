@@ -23,7 +23,7 @@ function startPlayAnim(r, i, m) {
   if (r !== S.room) return;
   const A = rt(r, i), T = TYPES[m.type];
   if (T.cat === 'slot') { A.spin = 1.1; if (Math.random() < 0.35) Snd.play('spin'); }
-  else if (m.type === 'craps') { A.dice = 1; Snd.play('dice'); }
+  else if (m.type === 'bingo') { A.card = 1; A.seed = 0; Snd.play('dice'); }
   else { A.card = 1; Snd.play('card'); }
 }
 
@@ -75,7 +75,8 @@ let started = false, last = performance.now(), offlineData = null, hudT = 0;
 function frame(t) {
   const dt = Math.min(0.1, (t - last) / 1000); last = t;
   tick(dt);
-  if (started) {
+  if (mapOpen) { renderMap(dt); hudT += dt; if (hudT > 0.2) { hudT = 0; updateMapHUD(); if (modalKind === 'building') refreshButtons(); } }
+  else if (started) {
     render();
     hudT += dt;
     if (hudT > 0.2) { hudT = 0; updateHUD(); updatePanelLive(); updateGoal(); if (modalKind && modalKind !== 'sound' && modalKind !== 'offline') refreshButtons(); }
@@ -91,17 +92,17 @@ function refreshButtons() {
 }
 function startGame() {
   started = true;
-  $('#menu').classList.add('hidden');
-  $('#hRoom').textContent = ROOMS[S.room].name;
+  $('#menu').classList.add('hidden'); if (mapOpen) hideMap();
+  setRoomGeom(S.room); $('#hRoom').textContent = ROOMS[S.room].name;
   resize();
   if (dailyState().can && !modalKind) openModal('missions', 'daily'); // recompensa diaria al entrar
 }
 function showMenu() {
-  started = false; closePanel(); cancelPick();
+  started = false; closePanel(); cancelPick(); if (mapOpen) hideMap();
   $('#menu').classList.remove('hidden');
-  $('#menuStats').textContent = `Dinero: ${money(S.money)} · Ingresos: ${money(totalPS())}/s · Salas: ${S.rooms.filter(Boolean).length}/${ROOMS.length} · 👑 ${S.chips || 0}`;
+  $('#menuStats').textContent = `Dinero: ${money(S.money)} · Ingresos: ${money(totalPS())}/s · Edificios: ${Object.keys(BUILDINGS).filter(hasBuilding).length}/4 · 👑 ${S.chips || 0}`;
 }
-$('#mPlay').onclick = () => { Snd.init(); Snd.play('buy'); startGame(); };
+$('#mPlay').onclick = () => { Snd.init(); Snd.play('buy'); showMap(); if (!S.welcomed) welcome(); };   // Jugar → mapa de edificios
 $('#btnHome').onclick = () => { Snd.play('click'); save(); showMenu(); };
 window.addEventListener('resize', resize);
 window.addEventListener('beforeunload', save);
@@ -109,6 +110,7 @@ setInterval(save, 5000);
 
 (async function boot() {
   load();
+  setRoomGeom(S.room);
   giveTestBonus();
   await loadAssets();
   // ganancias offline (50% durante máx. 4h)

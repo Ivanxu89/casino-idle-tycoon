@@ -12,7 +12,22 @@ const ROOMS = [
   { name: 'Jardín Amatista',       img: 'room_2.webp', unlock: 3e6,    inc: 40,   cost: 180,   time: 2.2, desc: 'Clientes exigentes, tiempos de mejora largos.' },
   { name: 'Galaxia Real',          img: 'room_3.webp', unlock: 8e8,    inc: 300,  cost: 3000,  time: 3.2, desc: 'Solo para casinos con nervios de acero.' },
   { name: 'Palacio Esmeralda VIP', img: 'room_4.webp', unlock: 4e11,   inc: 2500, cost: 60000, time: 4.5, desc: 'La sala definitiva. Lujo absoluto.' },
+  // salas de los otros edificios: se abren al comprar el edificio en el mapa (unlock 0)
+  { name: 'Sala MundiPoker',       img: 'room_poker.webp',     bld: 'poker',     unlock: 0, inc: 1, cost: 1, time: 3.2, desc: 'Cuatro mesas de póker para los grandes jugadores.' },
+  { name: 'Sala MundiBlackJack',   img: 'room_blackjack.webp', bld: 'blackjack', unlock: 0, inc: 1, cost: 1, time: 2.2, desc: 'Cuatro mesas de blackjack. ¡Paga 3 a 2!' },
+  { name: 'Sala MundiBingo',       img: 'room_bingo.webp',     bld: 'bingo',     unlock: 0, inc: 1, cost: 1, time: 1.5, desc: 'Cuatro mesas de bingo con su bombo.' },
 ];
+ROOMS.forEach(R => (R.bld = R.bld || 'slot'));
+
+// Edificios del mapa principal. MundiSlot es el casino de siempre (5 salas de tragaperras);
+// los demás tienen una sala con 4 mesas y se compran en el mapa (el precio sube con la dificultad).
+const BUILDINGS = {
+  slot:      { name: 'MundiSlot',      icon: '🎰', rooms: [0, 1, 2, 3, 4], cost: 0,    table: null,        desc: 'Tu casino de tragaperras: cinco salas de máquinas.' },
+  bingo:     { name: 'MundiBingo',     icon: '🎱', rooms: [7],             cost: 5e4,  table: 'bingo',     desc: 'Una sala con 4 mesas de bingo. Sin paseantes: solo juego.' },
+  blackjack: { name: 'MundiBlackJack', icon: '🃏', rooms: [6],             cost: 2e7,  table: 'blackjack', desc: 'Una sala con 4 mesas de blackjack.' },
+  poker:     { name: 'MundiPoker',     icon: '♠️', rooms: [5],             cost: 5e10, table: 'poker',     desc: 'Una sala con 4 mesas de póker. La más rentable.' },
+};
+const bldOf = r => ROOMS[r].bld;
 
 // cat: slot = "Máquinas", table = "Juegos"
 // place = colocar (×20 por escalón), license = licencia (×5 de colocar), upBase = lo que cuesta la primera mejora
@@ -25,10 +40,12 @@ const TYPES = {
   pharaoh:  { cat: 'slot',  name: 'Oro del Faraón',  sprite: 'slot_pharaoh', hue: 0, base: 700, cycle: 5, place: 5e+09, license: 2.5e+10, upBase: 200000, w: 200, ay: .80, desc: 'Escarabajos y el ojo de Horus.' },
   pirate:   { cat: 'slot',  name: 'Tesoro Pirata',   sprite: 'slot_pirate', hue: 0, base: 3000, cycle: 5.5, place: 2e+12, license: 1e+13, upBase: 2.5e+06, w: 200, ay: .80, desc: 'Un cofre lleno de doblones.' },
   candy:    { cat: 'slot',  name: 'Golosinas Neón',  sprite: 'slot_candy', hue: 0, base: 14000, cycle: 6, place: 8e+14, license: 4e+15, upBase: 3e+07, w: 200, ay: .80, desc: 'Dulce, brillante y muy rentable.' },
-  blackjack:{ cat: 'table', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0,   base: 420,  cycle: 5,   place: 2.6e+08, license: 1.3e+09, upBase: 60000,   w: 280, ay: .62, desc: 'El crupier pide en 16 y se planta en 17.' },
-  craps:    { cat: 'table', name: 'Dados (Craps)',  sprite: 'craps',     hue: 0,   base: 2000, cycle: 6,   place: 1e+11, license: 5e+11, upBase: 750000,   w: 280, ay: .62, desc: 'Ruido, gritos y mucho dinero en juego.' },
-  poker:    { cat: 'table', name: 'Póker Texas',    sprite: 'poker',     hue: 0,   base: 1e4,  cycle: 8,   place: 4e+13,   license: 2e+14, upBase: 1e+07,   w: 290, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
+  // mesas: cada una solo se pone en la sala de su edificio (bld); la licencia es comprar el edificio
+  bingo:    { cat: 'table', bld: 'bingo',     name: 'Mesa de Bingo',  sprite: 'bingo',     hue: 0, base: 30,    cycle: 4, place: 1500,  license: 0, upBase: 250,   w: 330, ay: .60, desc: 'Bombo, cartones y ¡línea! Cuatro jugadores por mesa.' },
+  blackjack:{ cat: 'table', bld: 'blackjack', name: 'Blackjack 21',   sprite: 'blackjack', hue: 0, base: 2500,  cycle: 5, place: 8e5,   license: 0, upBase: 1.2e5, w: 330, ay: .60, desc: 'El crupier pide en 16 y se planta en 17.' },
+  poker:    { cat: 'table', bld: 'poker',     name: 'Póker Texas',    sprite: 'poker',     hue: 0, base: 1.5e5, cycle: 6, place: 3e9,   license: 0, upBase: 8e6,   w: 340, ay: .60, desc: 'Mesa de 6 jugadores. La más rentable.' },
 };
+for (const T of Object.values(TYPES)) T.bld = T.bld || 'slot';
 
 // Escalera de 15 clientes, del más pobre al más rico. El Vagabundo es gratis e ilimitado (FREE_PLAYER);
 // el resto se contrata uno a uno y cada copia extra cuesta HIRE_GROWTH veces más.
@@ -168,7 +185,7 @@ const REEL_FIT = {
 // La recompensa de cada escalón k (0, 1, 2…) son gemas y dinero; ver missionReward() en missions.js.
 const MISSIONS = [
   { id: 'slots',   icon: '🎰', name: 'Coleccionista de tragaperras', goal: n => `Ten ${n} tragaperras en tu casino`,        tiers: [2, 4, 6, 10, 15, 20],               val: () => countCat('slot') },
-  { id: 'tables',  icon: '🃏', name: 'Mesas de juego',               goal: n => n === 1 ? 'Pon tu primera mesa de juego' : `Ten ${n} mesas de juego`,                  tiers: [1, 2, 4, 6, 10],                    val: () => countCat('table') },
+  { id: 'tables',  icon: '🃏', name: 'Mesas de juego',               goal: n => n === 1 ? 'Pon tu primera mesa de juego' : `Ten ${n} mesas de juego`,                  tiers: [1, 2, 4, 8, 12],                    val: () => countCat('table') },
   { id: 'level',   icon: '⬆️', name: 'Máquina estrella',             goal: n => `Sube una máquina a nivel ${n}`,             tiers: [5, 10, 25, 50, 100, 150, 200],      val: () => maxLevel() },
   { id: 'levels',  icon: '🔧', name: 'Mejoras sin parar',            goal: n => `Suma ${n} niveles entre todas tus máquinas`, tiers: [15, 40, 100, 250, 500, 1000],       val: () => allMachines().reduce((a, m) => a + m.level, 0) },
   { id: 'players', icon: '🧑', name: 'Lista VIP',                    goal: n => `Desbloquea ${n} clientes`,                  tiers: [2, 3, 4, 5, 6, 8, 10, 12, 15],            val: () => 1 + Object.keys(S.players).filter(k => k !== FREE_PLAYER && S.players[k] > 0).length },
@@ -191,16 +208,25 @@ const DAILY = [
   { minutes: 15, min: 2000, gems: 20 },
 ];
 const TEST_BONUS = 0; // PRUEBAS: monedas extra al empezar (ver main.js). Poner a 0 antes de publicar.
-const SPOTS_PER_ROOM = 9;
+const SPOTS_PER_ROOM = 9;   // máximo por sala (las salas de mesas solo usan 4: spotsIn)
 
 /* ------------- Suelo isométrico (coordenadas de la imagen 1536²) ------------- */
-const FLOOR = { B: [770, 620], R: [1480, 1010], L: [60, 1010] };
+// Cada tipo de sala tiene su suelo, sus huecos y su puerta (v = posición de la puerta en la pared izquierda).
+const GEOM = {
+  slot:  { floor: { B: [770, 620], R: [1480, 1010], L: [60, 1010] }, door: 0.70,
+           spots: [[0.27, 0.22], [0.58, 0.22], [0.89, 0.22], [0.27, 0.54], [0.58, 0.54], [0.89, 0.54], [0.27, 0.86], [0.58, 0.86], [0.89, 0.86]] },
+  table: { floor: { B: [775, 525], R: [1500, 1012], L: [50, 1012] }, door: 0.54,
+           spots: [[0.36, 0.33], [0.76, 0.33], [0.36, 0.74], [0.76, 0.74]] },
+};
+const geomOf = r => GEOM[bldOf(r) === 'slot' ? 'slot' : 'table'];
+const spotsIn = r => geomOf(r).spots.length;
+let FLOOR = GEOM.slot.floor;
 function floorPt(u, v) {
   const { B, R, L } = FLOOR;
   return [B[0] + u * (R[0] - B[0]) + v * (L[0] - B[0]), B[1] + u * (R[1] - B[1]) + v * (L[1] - B[1])];
 }
 // 3×3 huecos; los pasillos de los paseantes (render.js) pasan entre ellos
-const SPOT_UV = [[0.27, 0.22], [0.58, 0.22], [0.89, 0.22], [0.27, 0.54], [0.58, 0.54], [0.89, 0.54], [0.27, 0.86], [0.58, 0.86], [0.89, 0.86]];
+let SPOT_UV = GEOM.slot.spots;
 let SPOTS = SPOT_UV.map(([u, v]) => floorPt(u, v));
 
 /* ----------------------------- OBJETIVOS (FTUE) ------------------------------ */
@@ -213,7 +239,7 @@ const GOALS = [
   { t: 'Compra la licencia Esmeralda 7', ok: () => !!S.licenses.emerald, g: 4 },
   { t: 'Gana 100 $/s', ok: () => totalPS() >= 100, g: 5 },
   { t: 'Abre el Salón Zafiro', ok: () => S.rooms[1], g: 5 },
-  { t: 'Compra la licencia de Blackjack', ok: () => !!S.licenses.blackjack, g: 6 },
+  { t: 'Compra el edificio MundiBingo en el mapa 🗺️', ok: () => !!(S.buildings && S.buildings.bingo), g: 6 },
   { t: 'Gana 10K $/s', ok: () => totalPS() >= 1e4, g: 8 },
   { t: 'Abre el Jardín Amatista', ok: () => S.rooms[2], g: 10 },
   { t: 'Desbloquea a la Influencer', ok: () => !!S.players.influencer, g: 10 },

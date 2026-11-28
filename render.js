@@ -3,10 +3,10 @@
 /* ----------------------------- IMÁGENES ------------------------------ */
 const IMG = {};
 const SPR = {};
-// las tragaperras tienen 5 aspectos (0-4); las mesas 4 (0-3)
-const spriteTier = (T, t) => Math.min(t, T.cat === 'slot' ? 4 : 3); // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
+// tragaperras y mesas tienen 5 aspectos (0-4)
+const spriteTier = (T, t) => Math.min(t, 4); // key `${type}_${tier}` -> sprite de la máquina en ese nivel visual
 const AVATARS = Object.keys(PLAYERS);
-const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag'];
+const UI_IMGS = ['ui_coin', 'ui_coins', 'ui_gem', 'ui_bag', 'ui_lock'];
 const SYM_IMGS = ['sym_7', 'sym_cherry', 'sym_bell', 'sym_bar', 'sym_diamond', 'sym_lemon', 'sym_star', 'sym_crown',
   // símbolos temáticos de cada tragaperras
   'sym_orange', 'sym_watermelon', 'sym_ingot', 'sym_pearl', 'sym_lantern', 'sym_ccoin', 'sym_scarab', 'sym_eye', 'sym_ankh',
@@ -18,7 +18,9 @@ async function loadAssets() {
   const jobs = [], get = (key, file) => jobs.push(loadImg(A('assets/' + file)).then(im => (IMG[key] = im)));
   ROOMS.forEach((r, i) => get('room' + i, r.img));
   const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
-  for (const s of sprites) for (let t = 0; t <= (s.startsWith('slot_') ? 4 : 3); t++) get(`${s}_${t}`, `${s}_${t}.webp`);
+  for (const s of sprites) for (let t = 0; t <= 4; t++) get(`${s}_${t}`, `${s}_${t}.webp`);
+  for (let k = 0; k < 4; k++) { get(`car${k}f`, `car_${k}_f.webp`); get(`car${k}b`, `car_${k}_b.webp`); }
+  get('map_h', 'map_h.webp'); get('map_v', 'map_v.webp');
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
   for (const pid of AVATARS) { get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
   for (let k = 1; k <= GUARDS.length; k++) { get('guard_' + k, `guard_${k}.webp`); get('guardAct_' + k, `guard_${k}_act.webp`); get('guardBack_' + k, `guard_${k}_back.webp`); }
@@ -346,7 +348,7 @@ function render() {
   }
 
   // 1) huecos libres (a ras de suelo)  2) máquinas + paseantes ordenados por profundidad  3) etiquetas  4) efectos
-  const order = [...Array(SPOTS_PER_ROOM).keys()].sort((a, b) => SPOTS[a][1] - SPOTS[b][1]);
+  const order = [...Array(SPOTS.length).keys()].sort((a, b) => SPOTS[a][1] - SPOTS[b][1]);
   const now = Date.now();
   for (const i of order) if (!S.machines[r][i]) drawEmptySpot(i, SPOTS[i][0], SPOTS[i][1]);
   const items = [];
@@ -399,7 +401,7 @@ function drawMachine(r, i, m) {
       // de espaldas, delante de la ventana de rodillos, mirando a la máquina
       drawPlayerBack(ctx, sx - g.w * 0.36, sy + g.w * 0.30, 150, m.player, time + i, A.cheer, A.spin > 0.75);
     } else {
-      drawPerson(ctx, sx - g.w * 0.1, sy + g.h * 0.32, 150, m.player, time + i, A.cheer);
+      drawPerson(ctx, sx - g.w * 0.30, sy + g.h * 0.34, 150, m.player, time + i, A.cheer);
     }
 }
 function drawLabels(r, i, m, now) {
@@ -460,31 +462,44 @@ function drawEmptySpot(i, sx, sy) {
   ctx.restore();
 }
 
+// Animación de las mesas al jugar (A.card va de 1 a 0): reparto de cartas o bola que sale del bombo
+const TABLE_ANIM = {
+  blackjack: { from: [0.80, 0.22], to: [[0.28, 0.46], [0.42, 0.50], [0.56, 0.50], [0.68, 0.46]] },
+  poker:     { from: [0.58, 0.30], to: [[0.30, 0.36], [0.46, 0.50], [0.66, 0.50], [0.78, 0.34]] },
+};
+const BALL_COL = ['#ff4f5e', '#3fa9ff', '#3ddc5a', '#ffcf3f', '#c86bff'];
 function drawTableAnim(type, g, A) {
-  const cx = g.x + g.w * 0.5, cy = g.y + g.h * 0.38;
-  if (type === 'craps' && A.dice > 0) {
-    const p = 1 - A.dice; // 0..1
-    for (let k = 0; k < 2; k++) {
-      const x = g.x + g.w * (0.25 + p * 0.45) + k * 22, y = cy - Math.abs(Math.sin(p * Math.PI * 3)) * 40 * (1 - p) + k * 8;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(p * 12 + k);
-      ctx.fillStyle = '#e8141e'; ctx.strokeStyle = '#600'; ctx.lineWidth = 2; rr(ctx, -10, -10, 20, 20, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff'; for (const [a, b] of [[-5, -5], [5, 5], [0, 0]]) { ctx.beginPath(); ctx.arc(a, b, 2.2, 0, 7); ctx.fill(); }
+  const cx = g.x + g.w * 0.5, cy = g.y + g.h * 0.42;
+  if (A.card > 0 && TABLE_ANIM[type]) {
+    const p = 1 - A.card, D = TABLE_ANIM[type];
+    D.to.forEach(([tx0, ty0], k) => {
+      const q = Math.min(1, Math.max(0, p * 1.8 - k * 0.22));
+      if (q <= 0) return;
+      const fx = g.x + g.w * D.from[0], fy = g.y + g.h * D.from[1], tx = g.x + g.w * tx0, ty = g.y + g.h * ty0;
+      const x = fx + (tx - fx) * q, y = fy + (ty - fy) * q - Math.sin(q * Math.PI) * 34;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.6 + q * 0.5 + k * 0.12); ctx.scale(1, 0.75 + 0.25 * (1 - q));
+      ctx.fillStyle = q < 1 ? '#c22aa6' : '#fff'; ctx.strokeStyle = '#222'; ctx.lineWidth = 2; rr(ctx, -10, -14, 20, 28, 3); ctx.fill(); ctx.stroke();
+      if (q >= 1) { ctx.fillStyle = k % 2 ? '#e0141e' : '#111'; ctx.font = '900 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(['A', 'K', '♥', '♠'][k], 0, 1); }
       ctx.restore();
-    }
+    });
   }
-  if ((type === 'blackjack' || type === 'poker') && A.card > 0) {
-    const p = 1 - A.card;
-    for (let k = 0; k < 3; k++) {
-      const q = Math.min(1, Math.max(0, p * 1.6 - k * 0.25));
-      if (q <= 0) continue;
-      const fx = g.x + g.w * 0.62, fy = g.y + g.h * 0.18;
-      const tx = g.x + g.w * (0.28 + k * 0.2), ty = g.y + g.h * (0.48 + (k === 1 ? 0.05 : 0));
-      const x = fx + (tx - fx) * q, y = fy + (ty - fy) * q - Math.sin(q * Math.PI) * 30;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.5 + q * 0.5 + k * 0.1);
-      ctx.fillStyle = q < 1 ? '#c22aa6' : '#fff'; ctx.strokeStyle = '#222'; ctx.lineWidth = 2; rr(ctx, -9, -13, 18, 26, 3); ctx.fill(); ctx.stroke();
-      if (q >= 1) { ctx.fillStyle = k % 2 ? '#e0141e' : '#111'; ctx.font = '900 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(['A', 'K', '♥'][k], 0, 1); }
-      ctx.restore();
-    }
+  if (A.card > 0 && type === 'bingo') {
+    // la bola sale disparada del bombo, rebota en la mesa y enseña su número
+    const p = 1 - A.card, bx = g.x + g.w * 0.5, by = g.y + g.h * 0.22;
+    const tx = g.x + g.w * 0.66, ty = g.y + g.h * 0.50;
+    const q = Math.min(1, p * 1.6), x = bx + (tx - bx) * q, y = by + (ty - by) * q - Math.sin(q * Math.PI) * 70 - (q >= 1 ? Math.abs(Math.sin(p * 18)) * 10 * (1 - p) : 0);
+    const n = 1 + Math.floor((A.seed || (A.seed = Math.random())) * 75), col = BALL_COL[n % BALL_COL.length];
+    ctx.save(); ctx.translate(x, y);
+    const gr = ctx.createRadialGradient(-5, -6, 2, 0, 0, 16); gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, col); gr.addColorStop(1, '#00000088');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, 15, 0, 7); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.font = '900 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, 0, 1);
+    ctx.restore();
+    if (A.card < 0.05) A.seed = 0;
+    // el bombo gira: destellos dorados alrededor
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 6; k++) { const an = time * 6 + k * 1.05; ctx.fillStyle = `rgba(255,230,140,${0.5 * A.card})`; ctx.beginPath(); ctx.arc(bx + Math.cos(an) * g.w * 0.12, by + 10 + Math.sin(an) * g.w * 0.06, 4, 0, 7); ctx.fill(); }
+    ctx.restore();
   }
   // fichas que brillan
   if (A.flash > 0) {
@@ -499,7 +514,13 @@ function drawTableAnim(type, g, A) {
 // Algunos llevan propina ($ dorado sobre la cabeza): tócalos para cobrarla.
 const AISLE_U = [0.10, 0.42, 0.73, 1.0];
 const AISLE_V = [0.38, 0.70, 1.0];
-const DOOR_IN = [0.10, 0.70], DOOR = [-0.04, 0.70];
+let DOOR_IN = [0.10, 0.70], DOOR = [-0.04, 0.70];
+// cambia el suelo, los huecos y la puerta al entrar en una sala (las de mesas tienen otra forma)
+function setRoomGeom(r) {
+  const Gm = geomOf(r);
+  FLOOR = Gm.floor; SPOT_UV = Gm.spots; SPOTS = SPOT_UV.map(([u, v]) => floorPt(u, v));
+  DOOR_IN = [0.10, Gm.door]; DOOR = [-0.04, Gm.door]; GUARD_UV = [0.07, Gm.door - 0.14];
+}
 const EMO = ['😍', '🤑', '🎰', '✨', '🍀', '😎', '🥳'];
 const PID_LIST = Object.keys(PLAYERS);
 let WALK = [];
@@ -533,6 +554,7 @@ function nextTarget(w) {
 }
 function updateWalkers(dt) {
   if (!started) return;
+  if (bldOf(S.room) !== 'slot') { WALK = []; return; }   // en las salas de mesas no hay paseantes
   if (WALK.length < walkerCap() && Math.random() < dt * 0.6) spawnWalker();
   for (const w of WALK) {
     w.bubbleT = Math.max(0, w.bubbleT - dt); w.cheer = Math.max(0, w.cheer - dt * 1.2);

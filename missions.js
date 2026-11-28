@@ -41,6 +41,20 @@ function claimDaily() {
   Snd.play('level');
   toast(`📅 Día ${st.day}: +${money(amt)} y +${D.gems}◆`);
   save(); refreshModal(); updateHUD();
+  dailyHost(st.day, amt, D.gems);
+}
+// el anfitrión felicita por la racha y anima a volver mañana
+function dailyHost(day, amt, gems) {
+  const nextD = day % 7 + 1, N = DAILY[nextD - 1];
+  const cheer = day === 1 ? '¡Así se empieza! 🎉 Primer día de tu racha.'
+    : day === 7 ? '¡INCREÍBLE! 🏆 ¡Has completado la racha de 7 días! Eres un jugador de los de verdad.'
+    : `¡Enhorabuena! 🔥 Ya llevas ${day} días seguidos. ¡Eso es constancia!`;
+  setTimeout(() => Host.say([
+    { pose: 'wave', t: `${cheer} Te llevas ${money(amt)} y ${gems} gemas.` },
+    { pose: 'talk', t: nextD === 1 ? 'Mañana empieza una racha nueva… ¡y los premios vuelven a crecer cada día!'
+      : `Vuelve mañana a por el día ${nextD}: te espera ${nextD === 7 ? 'el gran regalo, con ' + N.gems + ' gemas' : 'un premio aún mayor y ' + N.gems + ' gemas'}. ¡Si faltas un día, la racha vuelve al día 1!` },
+    { pose: 'ok', t: '¡Te espero mañana! 😉', btn: '¡Hasta mañana! ▶' },
+  ]), 350);
 }
 
 // número de recompensas esperando (para el aviso del botón)
