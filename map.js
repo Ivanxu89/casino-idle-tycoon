@@ -180,7 +180,7 @@ function enterBuilding(k) {
   if (!hasBuilding(k)) { openBuilding(k); return; }
   const last = S.lastRoom && S.lastRoom[k], r = last !== undefined && S.rooms[last] ? last : BUILDINGS[k].rooms[0];
   hideMap(); Snd.play('buy');
-  goRoom(r); startGame();
+  goRoom(r); startGame(); welcomeRoom(k);
 }
 function updateMapHUD() {
   $('#mapMoney').textContent = money(S.money);

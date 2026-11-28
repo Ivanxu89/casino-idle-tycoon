@@ -56,6 +56,39 @@ const Host = (() => {
   };
 })();
 
+// Bienvenida a cada edificio: la primera vez que entras en él (en cada partida desde cero)
+const ROOM_WELCOME = {
+  slot: [
+    { pose: 'wave', t: '¡Bienvenido a MundiSlot, el reino de las tragaperras! 🎰' },
+    { pose: 'talk', t: 'Toca un hueco con el ➕ del suelo para colocar tu primera Lucky 7. Cada vez que gire, ganarás monedas.' },
+    { pose: 'talk', t: 'Toca una máquina para mejorarla y sentar a un cliente: los clientes más ricos apuestan más.' },
+    { pose: 'ok', t: '¡Llena la sala y abre las siguientes con las flechas de los lados!', btn: '¡Vamos! ▶' },
+  ],
+  bingo: [
+    { pose: 'wave', t: '¡Bienvenido a MundiBingo! 🎱 ¡Qué bien suena ese bombo!' },
+    { pose: 'talk', t: 'Aquí caben 4 mesas de bingo. Toca un hueco del suelo para colocar la primera.' },
+    { pose: 'ok', t: 'Mejóralas y se irán transformando, igual que las tragaperras. ¡Línea y bingo!', btn: '¡Vamos! ▶' },
+  ],
+  blackjack: [
+    { pose: 'wave', t: '¡Bienvenido a MundiBlackJack! 🃏 Aquí el crupier pide en 16 y se planta en 17.' },
+    { pose: 'talk', t: 'Tienes sitio para 4 mesas. Toca un hueco del suelo para colocar la primera.' },
+    { pose: 'ok', t: 'Cada mesa da mucho más que una tragaperras. ¡Que salga un 21!', btn: '¡Vamos! ▶' },
+  ],
+  poker: [
+    { pose: 'wave', t: '¡Bienvenido a MundiPoker, la sala de los grandes jugadores! ♠️' },
+    { pose: 'talk', t: 'Aquí van 4 mesas de póker, las más rentables de todo el casino. Toca un hueco para colocar la primera.' },
+    { pose: 'ok', t: '¡Siéntales a tus clientes más ricos y a por el bote!', btn: '¡Vamos! ▶' },
+  ],
+};
+function welcomeRoom(k) {
+  if (!S.roomWelcome) S.roomWelcome = {};
+  if (S.roomWelcome[k] || !ROOM_WELCOME[k]) return;
+  S.roomWelcome[k] = true; save();
+  // tras el fundido de entrada a la sala; la recompensa diaria espera a que termine de hablar
+  const daily = modalKind === 'missions'; if (daily) closeModal();
+  setTimeout(() => Host.say(ROOM_WELCOME[k], () => { if (daily && dailyState().can) openModal('missions', 'daily'); }), 450);
+}
+
 // Bienvenida: sale la primera vez que se pulsa Jugar en una partida nueva
 function welcome(then) {
   Host.say([

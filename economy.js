@@ -1,10 +1,10 @@
 'use strict';
 /* Estado y guardado, economía, formato de números y prestigio. Compartido. */
 /* ----------------------------- ESTADO ------------------------------ */
-const SAVE_KEY = 'casinoIdleTycoon_v3'; // v3: partida nueva desde cero (edificios, mapa y curva de dificultad nueva)
+const SAVE_KEY = 'casinoIdleTycoon_v4'; // v4: partida nueva desde cero (bienvenidas del anfitrión en cada edificio)
 function freshState() {
   return {
-    money: 60, gems: 10, totalEarned: 0, welcomed: false,
+    money: 60, gems: 10, totalEarned: 0, welcomed: false, roomWelcome: {}, // anfitrión (host.js)
     rooms: ROOMS.map((_, r) => r === 0),
     buildings: { slot: true }, // edificios comprados en el mapa (map.js)
     room: 0,
