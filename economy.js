@@ -33,6 +33,12 @@ function load() {
 // adapta partidas guardadas con versiones anteriores
 function migrate() {
   S.security = ROOMS.map((_, r) => (S.security && S.security[r]) || 0);
+  // una vez: se quitan los vigilantes ya contratados para poder ver la explicación del anfitrión (se devuelve lo pagado)
+  if (!S.secIntroReset) {
+    S.secIntroReset = true;
+    S.security.forEach((k, r) => { for (let t = 1; t <= k; t++) S.money += GUARDS[t - 1].cost * ROOMS[r].cost; });
+    S.security = ROOMS.map(() => 0); S.secWelcome = false;
+  }
   S.rooms = ROOMS.map((_, r) => !!(S.rooms && S.rooms[r]) || r === 0);
   S.buildings = Object.assign({ slot: true }, S.buildings);
   if (!S.rooms[S.room]) S.room = 0;
@@ -142,7 +148,8 @@ function doPrestige() {
   if (Date.now() > prestigeArmUntil) { prestigeArmUntil = Date.now() + 4000; Snd.play('click'); refreshModal(); return; }
   prestigeArmUntil = 0;
   const keep = { chips: (S.chips || 0) + g, prestiges: (S.prestiges || 0) + 1, gems: S.gems, sound: S.sound, goal: S.goal, totalEarned: S.totalEarned,
-    missions: S.missions, daily: S.daily, stats: S.stats, security: S.security, boost: S.boost };
+    missions: S.missions, daily: S.daily, stats: S.stats, security: S.security, boost: S.boost,
+    secIntroReset: S.secIntroReset, secWelcome: S.secWelcome, welcomed: S.welcomed, roomWelcome: S.roomWelcome };
   S = Object.assign(freshState(), keep);
   giveTestBonus();
   RT.clear(); WALK = []; closeModal(); goRoom(0);

@@ -24,6 +24,18 @@ function hireGuard(k) {
   save(); refreshModal();
 }
 
+// La primera vez que abres la seguridad, el anfitrión explica por qué conviene un vigilante
+function securityIntro() {
+  if (S.secWelcome) return;
+  S.secWelcome = true; save();
+  Host.say([
+    { pose: 'wave', t: '¡Ojo! Este es el puesto de seguridad de la sala. 🛡️' },
+    { pose: 'talk', t: 'De vez en cuando entra un ladrón 🦹 a llevarse una de tus máquinas… ¡con todos sus niveles!' },
+    { pose: 'talk', t: 'Un vigilante sale corriendo a placarlo. Cuanto mejor sea, antes reacciona y más fácil lo atrapa. ¡Y si lo pilla, te llevas una recompensa!' },
+    { pose: 'ok', t: 'Tú también puedes tocar al ladrón para pararlo, pero con un buen vigilante dormirás tranquilo. 😉', btn: '¡Entendido! ▶' },
+  ]);
+}
+
 function guardHit(px, py) {
   const [x, y] = toRoom(px, py), [gx, gy] = guardPos();
   return Math.abs(x - gx) < 48 && y > gy - 160 && y < gy + 24;
@@ -157,6 +169,7 @@ function guardPortrait(k, size) {
 
 function renderSecurity(tabs, body) {
   const r = S.room, cur = guardTier(r);
+  securityIntro();
   $('#modalTitle').textContent = '🛡️ SEGURIDAD · ' + ROOMS[r].name.toUpperCase();
   body.innerHTML = `<div class="daily-lead">${cur ? `Vigila la puerta: <b>${GUARDS[cur - 1].name}</b> · reacciona en ${GUARD_CHASE[cur - 1].react} s y acierta el ${Math.round(GUARD_CHASE[cur - 1].tackle * 100)}% de los placajes` : 'Sin vigilante, cada ladrón se lleva una máquina (si no lo tocas a tiempo).'}</div>`;
   const cards = document.createElement('div'); cards.className = 'cards'; body.appendChild(cards);
