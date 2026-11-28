@@ -2781,6 +2781,23 @@ function drawBuildingLights(B, poly, path, k) {
   mctx.restore();
 }
 
+// candado dorado dibujado a mano (se balancea un poco y brilla al pasar por encima)
+function drawLock(x, y, hot) {
+  mctx.save(); mctx.translate(x, y); mctx.rotate(Math.sin(mapT * 2.2 + x) * 0.06); const s = hot ? 1.12 : 1; mctx.scale(s, s);
+  const glow = mctx.createRadialGradient(0, 10, 4, 0, 10, 90); glow.addColorStop(0, 'rgba(255,210,90,.35)'); glow.addColorStop(1, 'rgba(255,210,90,0)');
+  mctx.fillStyle = glow; mctx.beginPath(); mctx.arc(0, 10, 90, 0, 7); mctx.fill();
+  // arco
+  mctx.lineCap = 'round'; mctx.strokeStyle = '#3a1500'; mctx.lineWidth = 22; mctx.beginPath(); mctx.arc(0, -12, 30, Math.PI, 0); mctx.lineTo(30, 8); mctx.moveTo(-30, -12); mctx.lineTo(-30, 8); mctx.stroke();
+  mctx.strokeStyle = '#d9dde6'; mctx.lineWidth = 13; mctx.beginPath(); mctx.arc(0, -12, 30, Math.PI, 0); mctx.lineTo(30, 8); mctx.moveTo(-30, -12); mctx.lineTo(-30, 8); mctx.stroke();
+  // cuerpo
+  const body = mctx.createLinearGradient(0, 0, 0, 70); body.addColorStop(0, '#ffe27a'); body.addColorStop(1, '#e08a10');
+  mctx.fillStyle = body; mctx.strokeStyle = '#3a1500'; mctx.lineWidth = 6; rr(mctx, -46, 0, 92, 70, 16); mctx.fill(); mctx.stroke();
+  mctx.fillStyle = 'rgba(255,255,255,.35)'; rr(mctx, -38, 6, 76, 14, 7); mctx.fill();
+  // ojo de la cerradura
+  mctx.fillStyle = '#3a1500'; mctx.beginPath(); mctx.arc(0, 30, 10, 0, 7); mctx.fill(); rr(mctx, -5, 32, 10, 22, 4); mctx.fill();
+  mctx.restore();
+}
+
 /* ---------- dibujo ---------- */
 function drawBadge(x, y, txt, sub, locked, hot) {
   mctx.save(); mctx.translate(x, y); const s = hot ? 1.08 : 1; mctx.scale(s, s);
@@ -2802,19 +2819,12 @@ function renderMap(dt) {
   mctx.save(); mctx.beginPath(); mctx.rect(0, 0, M.W, M.H); mctx.clip();   // nada se sale del mapa
   if (im) mctx.drawImage(im, 0, 0, M.W, M.H);
   drawFountains();
-  // edificios: luces si son tuyos; tapados en gris oscuro si no
-  const gray = grayMap(MV.key);
+  // edificios: luces si son tuyos; los bloqueados se ven tal cual, con un candado encima
   for (const [k, B] of Object.entries(M.b)) {
     const own = hasBuilding(k), poly = bigPoly(B);
     const path = () => { mctx.beginPath(); poly.forEach(([x, y], i) => (i ? mctx.lineTo(x, y) : mctx.moveTo(x, y))); mctx.closePath(); };
     mctx.save(); path();
-    if (!own) {
-      mctx.save(); mctx.clip();
-      if (gray) mctx.drawImage(gray, 0, 0, M.W, M.H);
-      mctx.fillStyle = 'rgba(14,8,28,.45)'; mctx.fill();
-      mctx.restore();
-      mctx.strokeStyle = 'rgba(160,150,190,.35)'; mctx.lineWidth = 3; mctx.setLineDash([10, 10]); mctx.stroke(); mctx.setLineDash([]);
-    } else drawBuildingLights(B, poly, path, k);
+    if (own) drawBuildingLights(B, poly, path, k);
     if (mapHover === k) {
       mctx.globalCompositeOperation = 'lighter'; mctx.fillStyle = own ? 'rgba(255,220,120,.14)' : 'rgba(200,200,255,.08)'; path(); mctx.fill();
       mctx.globalCompositeOperation = 'source-over'; mctx.strokeStyle = own ? '#ffcf3f' : '#b9a8e0'; mctx.lineWidth = 4; mctx.setLineDash([14, 10]); mctx.lineDashOffset = -mapT * 40; path(); mctx.stroke();
@@ -2825,7 +2835,7 @@ function renderMap(dt) {
   for (const [k, B] of Object.entries(M.b)) {
     const own = hasBuilding(k), hot = mapHover === k, bob = Math.sin(mapT * 2.4 + B.c[0]) * 4;
     if (own) drawBadge(B.c[0], B.c[1] + 40 + bob, '▶ ' + BUILDINGS[k].name, k === 'slot' ? null : `${countRoom(BUILDINGS[k].rooms[0])}/4 mesas`, false, hot);
-    else drawBadge(B.c[0], B.c[1] + 40 + bob, '🔒 ' + BUILDINGS[k].name, money(buildingCost(k)), true, hot);
+    else { drawLock(B.c[0], B.c[1] - 50 + bob * 0.5, hot); drawBadge(B.c[0], B.c[1] + 60 + bob, BUILDINGS[k].name, money(buildingCost(k)), true, hot); }
   }
 }
 
