@@ -1,7 +1,7 @@
 'use strict';
 /* Estado y guardado, economía, formato de números y prestigio. Compartido. */
 /* ----------------------------- ESTADO ------------------------------ */
-const SAVE_KEY = 'casinoIdleTycoon_v4'; // v4: partida nueva desde cero (bienvenidas del anfitrión en cada edificio)
+const SAVE_KEY = 'casinoIdleTycoon_v5'; // v5: partida nueva desde cero
 function freshState() {
   return {
     money: 60, gems: 10, totalEarned: 0, welcomed: false, roomWelcome: {}, // anfitrión (host.js)
