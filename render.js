@@ -20,7 +20,7 @@ async function loadAssets() {
   const sprites = [...new Set(Object.values(TYPES).map(T => T.sprite))];
   for (const s of sprites) for (let t = 0; t <= 4; t++) get(`${s}_${t}`, `${s}_${t}.webp`);
   for (let k = 0; k < 4; k++) { get(`car${k}f`, `car_${k}_f.webp`); get(`car${k}b`, `car_${k}_b.webp`); }
-  get('map_h', 'map_h.webp'); get('map_v', 'map_v.webp'); get('bingo_npc', 'bingo_npc.webp');
+  get('map_h', 'map_h.webp'); get('map_v', 'map_v.webp'); get('clients_sit', 'clients_sit.webp');
   for (const k of Object.keys(REEL_FIT)) get('reelmask_' + k, `reelmask_${k}.webp`);
   for (const pid of AVATARS) { get('anim_' + pid, `avatar_${pid}_anim.webp`); get('back_' + pid, `avatar_${pid}_back.webp`); get('walk_' + pid, `avatar_${pid}_walk.webp`); }
   for (let k = 1; k <= GUARDS.length; k++) { get('guard_' + k, `guard_${k}.webp`); get('guardAct_' + k, `guard_${k}_act.webp`); get('guardBack_' + k, `guard_${k}_back.webp`); }
@@ -409,36 +409,18 @@ function drawMachine(r, i, m) {
       drawPerson(ctx, sx - g.w * 0.30, sy + g.h * 0.34, 150, m.player, time + i, A.cheer);
     }
 }
-// Mesa de bingo: 4 sillas. El cliente que eliges se sienta en la de delante a la izquierda (la tuya);
-// en las otras tres juegan la abuela, el chaval de la gorra y la señora del vestido de lentejuelas.
-// Hoja bingo_npc.webp: 3 personajes x 4 fotogramas (sentado de frente, celebrando de frente, de espaldas, celebrando de espaldas).
-// Cada asiento: u,v = pies (en la mesa, 0-1) · clip = hasta dónde se ve (el tablero o el respaldo tapan el resto) · back = de espaldas · flip = mira a la derecha
-const BINGO_SEATS = [
-  { u: 0.17, v: 0.93, clip: 0.60,  back: true,  flip: true  },   // delante izquierda: el jugador que eliges
-  { u: 0.19, v: 0.47, clip: 0.335, back: false, flip: true  },   // detrás izquierda
-  { u: 0.81, v: 0.47, clip: 0.335, back: false, flip: false },   // detrás derecha
-  { u: 0.83, v: 0.85, clip: 0.61,  back: true,  flip: false },   // delante derecha
-];
-function drawSeated(img, f, x, y, k, flip, clipY) {
-  if (!img) return;
-  ctx.save(); ctx.beginPath(); ctx.rect(x - 200, clipY - 400, 400, 400); ctx.clip();
-  ctx.translate(x, y); if (flip) ctx.scale(-1, 1);
+// Mesa de bingo: la abuela, el señor de la barba y la señora pelirroja ya vienen sentados en el dibujo de la mesa
+// (bingo_0..4). La silla de delante a la izquierda queda libre: ahí se sienta el cliente que eliges,
+// de espaldas mirando a la mesa (clients_sit.webp: un fotograma por cliente, en el orden de PLAYERS).
+const SIT_ORDER = Object.keys(PLAYERS);
+const BINGO_SEAT = { u: 0.25, v: 0.87, k: 0.74 };
+function drawBingoSeats(g, m, A, i) {
+  const img = IMG.clients_sit, f = SIT_ORDER.indexOf(m.player); if (!img || f < 0) return;
+  const x = g.x + g.w * BINGO_SEAT.u, y = g.y + g.h * BINGO_SEAT.v, k = BINGO_SEAT.k;
+  const jump = A.cheer > 0 ? Math.sin(A.cheer * Math.PI) * 12 : Math.sin(time * 2 + i) * 1;
+  ctx.save(); ctx.translate(x, y - jump); ctx.scale(-1, 1);          // el arte mira a la izquierda: espejo para mirar a la mesa
   ctx.drawImage(img, f * ANIM.cw, 0, ANIM.cw, ANIM.ch, -ANIM.cw / 2 * k, -ANIM.base * k, ANIM.cw * k, ANIM.ch * k);
   ctx.restore();
-}
-function drawBingoSeats(g, m, A, i) {
-  const k = 150 / ANIM.idleH, cheer = A.cheer > 0, at = (u, v) => [g.x + g.w * u, g.y + g.h * v];
-  BINGO_SEATS.forEach((S0, s) => {
-    const [x, y] = at(S0.u, S0.v), clipY = g.y + g.h * S0.clip;
-    const bob = cheer ? -Math.abs(Math.sin((time + s) * 9)) * 4 : Math.sin(time * 2 + s + i) * 1;
-    if (s === 0) {
-      // tu cliente, de espaldas (hoja «back»: 0 quieto · 2 celebrar)
-      drawSeated(IMG['back_' + m.player] || IMG['anim_' + m.player], cheer ? 2 : 0, x, y + bob, k, S0.flip, clipY);
-    } else {
-      const who = (i + s - 1) % 3, f = who * 4 + (S0.back ? 2 : 0) + (cheer ? 1 : 0);
-      drawSeated(IMG.bingo_npc, f, x, y + bob, k, S0.flip, clipY);
-    }
-  });
 }
 function drawLabels(r, i, m, now) {
     const T = TYPES[m.type], g = mGeom(i, m), sx = SPOTS[i][0];
