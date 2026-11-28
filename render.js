@@ -397,16 +397,20 @@ function drawMachine(r, i, m) {
       else if (A.flash > 0) drawReelFlash(g, m.type, tier, A.flash);
     } else {
       drawTableAnim(m.type, g, A);
+      drawTableSeat(g, m, A, i);   // el cliente, sentado en su silla (dentro del rebote de la mesa)
     }
     ctx.restore();
 
-    // cliente
-    if (T.cat === 'slot') {
-      // de espaldas, delante de la ventana de rodillos, mirando a la máquina
-      drawPlayerBack(ctx, sx - g.w * 0.36, sy + g.w * 0.30, 150, m.player, time + i, A.cheer, A.spin > 0.75);
-    } else {
-      drawPerson(ctx, sx - g.w * 0.30, sy + g.h * 0.34, 150, m.player, time + i, A.cheer);
-    }
+    // cliente de las tragaperras: de espaldas, delante de la ventana de rodillos, mirando a la máquina
+    if (T.cat === 'slot') drawPlayerBack(ctx, sx - g.w * 0.36, sy + g.w * 0.30, 150, m.player, time + i, A.cheer, A.spin > 0.75);
+}
+// Mesas: los jugadores fijos vienen ya sentados en el dibujo de cada mesa (Magnific, 5 niveles) y el sitio
+// de delante a la izquierda está libre (sin silla). Ahí está de pie el cliente que eliges, de espaldas mirando
+// a la mesa. Más adelante cada cliente tendrá su propia silla.  u,v = pies (0-1 en la mesa)
+const TABLE_SEAT = { bingo: { u: 0.25, v: 0.86 }, poker: { u: 0.17, v: 0.80 }, blackjack: { u: 0.14, v: 0.86 } };
+function drawTableSeat(g, m, A, i) {
+  const S0 = TABLE_SEAT[m.type]; if (!S0) return;
+  drawPlayerBack(ctx, g.x + g.w * S0.u, g.y + g.h * S0.v, 140, m.player, time + i, A.cheer, false);
 }
 function drawLabels(r, i, m, now) {
     const T = TYPES[m.type], g = mGeom(i, m), sx = SPOTS[i][0];
